@@ -1,0 +1,35 @@
+{
+    "name": "LevaAí • Fretes e mudanças",
+    "short_name": "LevaAí",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#F5F7FB",
+    "theme_color": "#2156E8",
+    "description": "Plataforma para intermediação e contratação de fretes e mudanças. Conecta motoristas e usuários através de busca inteligente por capacidade de carga, tipo de veículo e localização. (Projeto de TCC)",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}

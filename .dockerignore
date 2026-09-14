@@ -1,0 +1,11 @@
+.git
+.dart_tool
+.idea
+.vscode
+**/node_modules
+**/build
+backend/data
+backend/.env
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
