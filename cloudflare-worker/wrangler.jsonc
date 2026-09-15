@@ -4,6 +4,10 @@
   "main": "src/index.mjs",
   "compatibility_date": "2026-09-15",
   "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "DEMO_MODE": "true",
+    "MAPS_USER_AGENT": "LevaAi-AcademicMVP/0.1"
+  },
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
