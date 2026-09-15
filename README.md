@@ -2,11 +2,11 @@
 
 ## MVP funcional
 
-O MVP foi implementado neste repositório com **Flutter Web + API Node.js**, persistência local e adaptador PostgreSQL. Inclui cadastro/login, veículos, cotação, contratação, aceite/recusa, Pix demonstrativo, status, histórico e avaliações.
+O MVP foi implementado neste repositório com **Flutter Web + Cloudflare Worker + PostgreSQL no Supabase**. Inclui cadastro/login, veículos, cotação, contratação, aceite/recusa, Pix demonstrativo, status, histórico e avaliações.
 
 Na raiz do projeto, execute `./Iniciar-MVP.ps1` e abra **http://127.0.0.1:3000**. As contas de teste estão disponíveis nos botões **Testar cliente** e **Testar prestador**. Para recompilar: `./Iniciar-MVP.ps1 -Recompilar`.
 
-Consulte o **[guia completo do MVP](docs/MVP.md)** para o roteiro de apresentação, configuração do PostgreSQL/Supabase, mapas, Pix e limitações. O Pix real depende de configuração e homologação; o modo padrão não gera cobranças. O banco remoto existente não foi alterado.
+Consulte o **[guia completo do MVP](docs/MVP.md)** para o roteiro de apresentação, configuração da Cloudflare e Supabase, mapas, Pix e limitações. O Pix real depende de configuração e homologação; o modo padrão não gera cobranças. O banco remoto existente não foi alterado.
 
 ---
 

@@ -1,0 +1,6 @@
+# Nunca envie este arquivo preenchido ao GitHub.
+JWT_SECRET=gere-uma-chave-aleatoria-com-no-minimo-32-caracteres
+DEMO_MODE=true
+MAPS_USER_AGENT=LevaAi-AcademicMVP/0.1
+# Para desenvolvimento local com Hyperdrive, defina esta variável no terminal:
+# CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://...

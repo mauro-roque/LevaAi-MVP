@@ -1,10 +1,10 @@
 # LevaAí — MVP
 
-Implementação local em Flutter Web + Node.js, no repositório original. O fluxo principal está conectado à API; as telas antigas de catálogo permanecem no repositório, mas não são o ponto de entrada.
+Implementação em Flutter Web + Cloudflare Worker, com PostgreSQL mantido no Supabase. O fluxo principal está conectado à API; as telas antigas de catálogo permanecem no repositório, mas não são o ponto de entrada.
 
 ## Executar
 
-Requisitos: Node.js 22.13+ e Flutter 3.29.3 / Dart 3.7.2 ou versões compatíveis. Na raiz `Leva-Ai`:
+Requisitos: Node.js 22.13+ e Flutter 3.29.3 / Dart 3.7.2 ou versões compatíveis. Na raiz `LevaAi-MVP`:
 
 ```powershell
 .\Iniciar-MVP.ps1
@@ -14,16 +14,19 @@ Abra http://127.0.0.1:3000. Na primeira execução, o script compila a interface
 
 Se a política do PowerShell impedir a execução, não precisa alterá-la: execute `flutter pub get` e `flutter build web --release` na pasta `frontEnd/leva_ai`; depois execute `node --env-file-if-exists=.env src/server.mjs` em `backend`.
 
-## Publicar gratuitamente: Render + Supabase
+## Publicar gratuitamente: Cloudflare Workers + Supabase
 
-O repositório inclui `Dockerfile` e `render.yaml` para publicar a interface e a API juntas no Render. O banco deve ser o PostgreSQL do Supabase: não use SQLite hospedado, pois o plano gratuito do Render perde arquivos locais quando o serviço reinicia ou fica inativo.
+O diretório `cloudflare-worker` contém a versão de produção. Ela entrega o Flutter como asset estático pela CDN da Cloudflare e executa somente `/api/*` no Worker. Não há servidor Node permanente nem suspensão após alguns minutos de inatividade.
 
-1. Envie as alterações deste repositório para o GitHub.
-2. No [Render](https://render.com), crie uma conta, escolha **New → Blueprint** e conecte o repositório `GabrielG777/Leva-Ai`. O arquivo `render.yaml` cria o serviço gratuito.
-3. No Supabase, abra o projeto, vá em **Connect** e copie a URL de conexão PostgreSQL pelo pooler em modo **Session**. No Render, preencha a variável secreta `DATABASE_URL` com ela. Não cole essa URL em arquivos do repositório nem no Flutter.
-4. Confirme o deploy e aguarde o endereço `https://…onrender.com`. A primeira inicialização cria o schema `leva_ai_mvp`, sem apagar as tabelas existentes no schema público.
+1. No Supabase, abra o **SQL Editor**, cole e execute [`cloudflare-worker/migrations/001_leva_ai_mvp_postgres.sql`](../cloudflare-worker/migrations/001_leva_ai_mvp_postgres.sql). A migração cria apenas o schema `leva_ai_mvp`; não remove nem modifica tabelas existentes.
+2. No Supabase, abra **Connect** e copie a conexão PostgreSQL direta ou pelo pooler em modo **Session**. Ela será usada apenas ao criar o Hyperdrive; não salve esse endereço no repositório.
+3. Na Cloudflare, em **Workers & Pages → Create → Worker**, crie `leva-ai-mvp`. Em seguida, crie um Hyperdrive apontando para a conexão do Supabase. No Worker, adicione uma binding **Hyperdrive** chamada `HYPERDRIVE`.
+4. Na pasta `cloudflare-worker`, instale as dependências, execute `npm run build` e depois `npx wrangler deploy`. A primeira publicação pedirá login na Cloudflare.
+5. Em **Settings → Variables and Secrets**, adicione `JWT_SECRET` como secret, com 32 ou mais caracteres aleatórios. Adicione `DEMO_MODE=true` como variável de texto. O Worker fica em modo demonstração e o Pix não gera cobrança real.
 
-O serviço é publicado com `DEMO_MODE=true`: há contas de demonstração e o Pix continua simulado. O Render gratuito pode suspender a aplicação depois de inatividade; a primeira visita posterior pode levar cerca de um minuto. O Supabase gratuito também pode pausar projetos pouco utilizados após uma semana. Essa combinação é adequada para apresentação do TCC, não para operação comercial.
+O Flutter usa automaticamente a origem onde foi publicado, portanto navegador e API ficam no mesmo domínio. Não adicione a URL do banco, chaves do Supabase ou token do Mercado Pago ao Flutter ou ao GitHub.
+
+Cloudflare Workers Free inclui 100 mil requisições de API/dia e Hyperdrive Free inclui 100 mil consultas/dia. As requisições de arquivos estáticos do Flutter não consomem a cota do Worker. O plano é adequado para apresentação e piloto pequeno; se atingir alguma cota, a API poderá responder erro até a renovação diária. Consulte os limites atuais em [Workers](https://developers.cloudflare.com/workers/platform/pricing/) e [Hyperdrive](https://developers.cloudflare.com/hyperdrive/platform/pricing/).
 
 ## Roteiro de demonstração
 
@@ -48,7 +51,7 @@ Também é possível cadastrar clientes e prestadores pela interface. A sessão 
 
 ## O que está implementado
 
-- Cadastro e login por perfil, senha com scrypt, JWT HS256 de oito horas e revogação no logout.
+- Cadastro e login por perfil, senha com PBKDF2, JWT HS256 de oito horas e revogação no logout.
 - Cadastro/edição de veículos, capacidade em kg e m³, preço/km, equipe de ajudantes por veículo, preço por ajudante, endereço base, raio e disponibilidade.
 - Solicitação com endereços, data, itens/quantidades em texto, peso, volume e ajudantes.
 - Busca explícita de endereços no Nominatim, rota de carro no OSRM e mapa OpenStreetMap; sem autocomplete a cada tecla.
@@ -57,7 +60,7 @@ Também é possível cadastrar clientes e prestadores pela interface. A sessão 
 - Reserva idempotente, aceite/recusa, bloqueio de dupla reserva por veículo/data, Pix e acompanhamento.
 - Histórico de mudanças de status, avaliação única após conclusão e média calculada com avaliações reais do banco.
 - Painel do prestador com serviços em aberto e total de serviços concluídos.
-- SQLite local e adaptador PostgreSQL com migração aditiva em schema isolado.
+- Cloudflare Worker com Hyperdrive e PostgreSQL no Supabase, usando migração aditiva em schema isolado. O servidor Node e SQLite permanecem apenas para a demonstração local.
 - Autorização por dono/perfil, consultas parametrizadas, limites de corpo/requisições, CORS com lista permitida, respostas sem hash de senha e identificadores para erros.
 
 ## Mapas e rota de exemplo
@@ -70,14 +73,14 @@ Referências: [Nominatim — política de uso](https://operations.osmfoundation.
 
 ## PostgreSQL / Supabase
 
-O script original em `BANCO` começa removendo tabelas. Ele **não é executado** pelo MVP. A nova migração está em `backend/migrations/001_mvp.sql` e usa `CREATE TABLE IF NOT EXISTS` no schema `leva_ai_mvp`, preservando o schema público existente. Não houve migração nem alteração remota no Supabase.
+O script original em `BANCO` começa removendo tabelas. Ele **não é executado** pelo MVP. A migração de produção está em [`cloudflare-worker/migrations/001_leva_ai_mvp_postgres.sql`](../cloudflare-worker/migrations/001_leva_ai_mvp_postgres.sql) e usa `CREATE TABLE IF NOT EXISTS` no schema `leva_ai_mvp`, preservando o schema público existente. Ela deve ser executada uma vez pelo SQL Editor do Supabase.
 
 Para conectar:
 
-1. Em `backend`, execute `npm ci` e copie `.env.example` para `.env`.
-2. Preencha `DATABASE_URL` com uma conexão PostgreSQL de servidor autorizada. No Supabase, prefira conexão direta ou pooler em modo **session**, pois o adaptador mantém `search_path` na sessão.
-3. Use TLS válido conforme a conexão do provedor; não desative verificação de certificados.
-4. Inicie a API. Ela cria seu schema e tabelas se ainda não existirem. Não importa dados das tabelas originais automaticamente.
+1. No Supabase, crie o schema com a migração acima e obtenha a string de conexão em **Connect**.
+2. Crie um Hyperdrive na Cloudflare com essa string e adicione a binding `HYPERDRIVE` ao Worker. O Worker cria um cliente PostgreSQL por requisição; o Hyperdrive mantém o pool de conexões.
+3. Use TLS válido conforme a conexão indicada pelo Supabase; não desative a validação de certificados.
+4. Defina `JWT_SECRET` no painel da Cloudflare como secret. A aplicação não importa dados das tabelas originais automaticamente.
 
 O esquema separa usuários, sessões, veículos, orçamentos, reservas, pagamentos, avaliações e histórico, com chaves estrangeiras e índice único parcial de reserva. Detalhes variáveis da carga/rota/veículo e snapshots de preços são JSON em colunas TEXT portáveis entre bancos. É uma escolha de simplicidade do MVP; itens/endereço podem ser normalizados em futuras migrações. O banco é acessado somente pelo servidor, nunca diretamente pelo Flutter. Não exponha esse schema via PostgREST nem credenciais de banco no cliente.
 
@@ -85,7 +88,7 @@ O esquema separa usuários, sessões, veículos, orçamentos, reservas, pagament
 
 **O modo padrão é demonstrativo e não gera cobrança nem QR Code pagável.** A confirmação simulada fica identificada na interface e no banco.
 
-O adaptador para Mercado Pago cria Pix com `X-Idempotency-Key` por pedido e consulta o estado no servidor, conferindo valor, moeda, método e referência antes de agendar. Para habilitar, configure `DEMO_MODE=false`, `DATABASE_URL`, `JWT_SECRET` aleatório de pelo menos 32 caracteres e `MERCADO_PAGO_ACCESS_TOKEN` em `backend/.env`. Utilize um banco novo, sem as contas de demonstração, para ambiente real. A conta deve estar habilitada para Pix e o gateway pode exigir adequações aos dados do pagador de acordo com sua conta. Nenhuma chave privada vai para o Flutter.
+O adaptador para Mercado Pago cria Pix com `X-Idempotency-Key` por pedido e consulta o estado no servidor, conferindo valor, moeda, método e referência antes de agendar. Para habilitar, defina `DEMO_MODE=false` e os secrets `JWT_SECRET` e `MERCADO_PAGO_ACCESS_TOKEN` nas configurações do Worker. Utilize um banco novo, sem as contas de demonstração, para ambiente real. A conta deve estar habilitada para Pix e o gateway pode exigir adequações aos dados do pagador de acordo com sua conta. Nenhuma chave privada vai para o Flutter.
 
 O adaptador real foi implementado a partir da [documentação de Pix do Mercado Pago](https://www.mercadopago.com.br/developers/pt/docs/checkout-bricks/payment-brick/payment-submission/pix), mas **não foi homologado com uma conta ou transação real**. A confirmação usa o botão **Consultar pagamento**. Webhooks, conciliação automática, expiração de reservas, reembolso, split e repasse ao prestador ainda precisam de implementação antes de uma operação comercial. Não há cartão neste MVP.
 
@@ -96,14 +99,14 @@ O adaptador real foi implementado a partir da [documentação de Pix do Mercado 
 - Cliente cancela enquanto aguarda aceite/pagamento e **antes da emissão do Pix**. Depois da emissão, cancelamento exige atendimento/conciliação; não há reembolso automático.
 - Prestador só inicia depois da aprovação do Pix e segue a ordem dos status. A interface atualiza por ação explícita, sem rastreamento em tempo real.
 - Itens e quantidades são texto descritivo; peso/volume são estimativas informadas pelo cliente. Dimensões individuais, pedágios, mínimo, taxa de retorno e restrições da via não compõem o preço.
-- A API usa uma conexão e fila transacional por processo. Adequado à demonstração, sem promessa de escala: consultas externas podem atrasar outras requisições. Pool, transações com bloqueio por reserva e jobs são próximos passos.
+- Cada requisição abre uma transação curta e usa o pool do Hyperdrive. Consultas de mapas e chamadas ao gateway ainda precisam de observabilidade, filas e jobs antes de uma operação de grande escala.
 - Edição completa de perfil, endereços favoritos, recuperação/verificação de e-mail, upload de fotos, chat e notificações ficam fora desta entrega.
 - Não foi realizada adequação jurídica/LGPD para operação pública. Antes de publicar: termos, privacidade, retenção, atendimento e exclusão de dados, HTTPS, gestão de segredos, monitoramento e homologação das integrações.
 
 ## Validação
 
-API: em `backend`, `npm test`. Cobre fluxo completo, preço, capacidade, disponibilidade, dados inválidos, isolamento entre usuários, concorrência, expiração, pagamento idempotente, cancelamento, recusa, avaliação e logout.
+Worker: em `cloudflare-worker`, execute `npm test`. Ele valida a proteção de senha e a assinatura de sessão. A publicação é conferida pelo Wrangler antes do deploy. A suíte do servidor local em `backend`, `npm test`, continua cobrindo o fluxo completo de regras de negócio.
 
 Flutter: em `frontEnd/leva_ai`, `flutter analyze`, `flutter test` e `flutter build web --release`. Testes de interface verificam erro de login, formulário e layouts de 390 e 1440 pixels. O fluxo de cliente/prestador também foi exercitado no navegador local.
 
-PostgreSQL remoto e Pix real exigem validação com infraestrutura e credenciais de homologação. Os testes automatizados usam SQLite isolado em memória.
+PostgreSQL remoto e Pix real exigem validação com infraestrutura e credenciais de homologação. A migração no Supabase e a criação do Hyperdrive ainda não foram executadas nesta máquina.

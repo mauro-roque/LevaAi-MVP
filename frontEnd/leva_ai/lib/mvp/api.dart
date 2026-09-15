@@ -19,7 +19,7 @@ class Api {
   static String get baseUrl {
     const configured = String.fromEnvironment('API_URL');
     if (configured.isNotEmpty) return configured;
-    if (kIsWeb && Uri.base.port == 3000) return Uri.base.origin;
+    if (kIsWeb) return Uri.base.origin;
     return 'http://localhost:3000';
   }
 
