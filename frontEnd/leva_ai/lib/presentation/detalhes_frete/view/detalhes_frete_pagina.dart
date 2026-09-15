@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:leva_ai/domain/entities/transportador_entidade.dart';
 
-
 class DetalhesFretePagina extends StatelessWidget {
   const DetalhesFretePagina({super.key, required this.transportador});
   final TransportadorEntidade transportador;

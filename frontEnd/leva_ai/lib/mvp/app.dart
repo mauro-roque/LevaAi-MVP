@@ -5,6 +5,7 @@ import 'request_page.dart';
 import 'bookings_page.dart';
 import 'vehicles_page.dart';
 
+/// Raiz do fluxo principal do MVP: sessão, navegação e carregamento inicial.
 class LevaAiMvp extends StatefulWidget {
   final Api? api;
   const LevaAiMvp({super.key, this.api});
@@ -15,8 +16,11 @@ class LevaAiMvp extends StatefulWidget {
 class _LevaAiMvpState extends State<LevaAiMvp> {
   late final Api api = widget.api ?? Api();
   Json? config, user;
-  String? error;
+  Object? error;
   int page = 0, revision = 0;
+
+  bool get serviceStarting =>
+      error is ApiException && (error as ApiException).status == 503;
   @override
   void initState() {
     super.initState();
@@ -29,7 +33,7 @@ class _LevaAiMvpState extends State<LevaAiMvp> {
       final result = await api.call('/config');
       if (mounted) setState(() => config = result);
     } catch (e) {
-      if (mounted) setState(() => error = e.toString());
+      if (mounted) setState(() => error = e);
     }
   }
 
@@ -60,10 +64,35 @@ class _LevaAiMvpState extends State<LevaAiMvp> {
                         if (error == null)
                           const CircularProgressIndicator()
                         else ...[
-                          Notice(error!, error: true),
+                          Icon(
+                            serviceStarting
+                                ? Icons.cloud_sync_outlined
+                                : Icons.cloud_off_outlined,
+                            size: 38,
+                            color: serviceStarting ? blue : Colors.red.shade700,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            serviceStarting
+                                ? 'Estamos preparando sua conexão segura.'
+                                : 'Não foi possível conectar ao LevaAí.',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 8),
+                          Notice(
+                            serviceStarting
+                                ? 'O serviço ficará disponível em instantes. Seus dados permanecem protegidos.'
+                                : error.toString(),
+                            error: !serviceStarting,
+                          ),
                           FilledButton(
                             onPressed: load,
-                            child: const Text('Tentar novamente'),
+                            child: Text(
+                              serviceStarting
+                                  ? 'Verificar novamente'
+                                  : 'Tentar novamente',
+                            ),
                           ),
                         ],
                       ],
@@ -382,6 +411,7 @@ class _LevaAiMvpState extends State<LevaAiMvp> {
   }
 }
 
+/// Tela de acesso e criação de conta, usada antes da área protegida.
 class AuthPage extends StatefulWidget {
   final Api api;
   final bool demo;

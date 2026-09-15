@@ -4,7 +4,6 @@ import 'package:leva_ai/core/routes/rotas_app.dart';
 import 'package:leva_ai/presentation/compartilhado/widgets/cartao_transportador.dart';
 import 'package:leva_ai/presentation/freight_catalog/viewmodels/catalogo_fretes_viewmodel.dart';
 
-
 class CatalogoFretesPagina extends StatefulWidget {
   const CatalogoFretesPagina({super.key, required this.viewModel});
   final CatalogoFretesViewModel viewModel;
@@ -38,14 +37,15 @@ class _CatalogoFretesPaginaState extends State<CatalogoFretesPagina> {
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
-              children: ['Mudança', 'Carga pesada', 'Carreto pequeno']
-                  .map(
-                    (t) => FilterChip(
-                      label: Text(t),
-                      onSelected: (_) => setState(() {}),
-                    ),
-                  )
-                  .toList(),
+              children:
+                  ['Mudança', 'Carga pesada', 'Carreto pequeno']
+                      .map(
+                        (t) => FilterChip(
+                          label: Text(t),
+                          onSelected: (_) => setState(() {}),
+                        ),
+                      )
+                      .toList(),
             ),
             const SizedBox(height: 20),
             const Text(
@@ -56,11 +56,12 @@ class _CatalogoFretesPaginaState extends State<CatalogoFretesPagina> {
             ...widget.viewModel.transportadores.map(
               (t) => CartaoTransportador(
                 transportador: t,
-                aoTocar: () => Navigator.pushNamed(
-                  context,
-                  RotasApp.detalhes,
-                  arguments: t,
-                ),
+                aoTocar:
+                    () => Navigator.pushNamed(
+                      context,
+                      RotasApp.detalhes,
+                      arguments: t,
+                    ),
               ),
             ),
           ],

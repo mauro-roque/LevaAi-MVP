@@ -40,6 +40,22 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('informa quando o serviço está sendo ativado', (tester) async {
+    final api = Api(
+      client: MockClient(
+        (_) async => http.Response(
+          jsonEncode({'error': 'Configuração do banco pendente.'}),
+          503,
+        ),
+      ),
+    );
+    await tester.pumpWidget(LevaAiMvp(api: api));
+    await tester.pumpAndSettle();
+    expect(find.text('Estamos preparando sua conexão segura.'), findsOneWidget);
+    expect(find.text('Verificar novamente'), findsOneWidget);
+    api.dispose();
+  });
+
   for (final size in [const Size(390, 844), const Size(1440, 1000)]) {
     testWidgets('solicitação e login sem overflow em ${size.width}px', (
       tester,

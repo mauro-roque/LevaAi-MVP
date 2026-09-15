@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'ui.dart';
 
+/// Área do prestador para consultar e administrar os veículos disponíveis.
 class VehiclesPage extends StatefulWidget {
   final Api api;
   final Json config;
@@ -142,6 +143,7 @@ class _VehiclesPageState extends State<VehiclesPage> {
   );
 }
 
+/// Editor reutilizável para inclusão e alteração de veículos do prestador.
 class VehicleEditor extends StatefulWidget {
   final Api api;
   final Json config;

@@ -1,3 +1,33 @@
 import '../models/transportador_modelo.dart';
-abstract interface class FonteRemotaFrete { Future<List<TransportadorModelo>> obterTransportadores(); }
-class FonteRemotaFreteMock implements FonteRemotaFrete { @override Future<List<TransportadorModelo>> obterTransportadores() async => [TransportadorModelo.deJson({'id':'1','nome':'Rápido Express','avaliacao':4.9,'areaAtuacao':'São Paulo e região','valorInicial':120,'modelo':'Fiat Fiorino','tipo':'Utilitário','capacidadeKg':650,'volumeM3':3.3}),TransportadorModelo.deJson({'id':'2','nome':'Mudanças Brasil','avaliacao':4.7,'areaAtuacao':'Grande São Paulo','valorInicial':240,'modelo':'Caminhão 3/4','tipo':'Caminhão','capacidadeKg':3000,'volumeM3':18})]; }
+
+abstract interface class FonteRemotaFrete {
+  Future<List<TransportadorModelo>> obterTransportadores();
+}
+
+class FonteRemotaFreteMock implements FonteRemotaFrete {
+  @override
+  Future<List<TransportadorModelo>> obterTransportadores() async => [
+    TransportadorModelo.deJson({
+      'id': '1',
+      'nome': 'Rápido Express',
+      'avaliacao': 4.9,
+      'areaAtuacao': 'São Paulo e região',
+      'valorInicial': 120,
+      'modelo': 'Fiat Fiorino',
+      'tipo': 'Utilitário',
+      'capacidadeKg': 650,
+      'volumeM3': 3.3,
+    }),
+    TransportadorModelo.deJson({
+      'id': '2',
+      'nome': 'Mudanças Brasil',
+      'avaliacao': 4.7,
+      'areaAtuacao': 'Grande São Paulo',
+      'valorInicial': 240,
+      'modelo': 'Caminhão 3/4',
+      'tipo': 'Caminhão',
+      'capacidadeKg': 3000,
+      'volumeM3': 18,
+    }),
+  ];
+}

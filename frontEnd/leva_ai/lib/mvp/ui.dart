@@ -23,6 +23,7 @@ const statusNames = {
   'pagamento_recusado': 'Pagamento recusado',
 };
 
+/// Tema visual centralizado para manter as telas consistentes durante a evolução.
 ThemeData appTheme() => ThemeData(
   useMaterial3: true,
   scaffoldBackgroundColor: background,
@@ -89,6 +90,7 @@ ThemeData appTheme() => ThemeData(
   dividerTheme: const DividerThemeData(color: Color(0xFFE9EDF3)),
 );
 
+/// Cartão padrão usado para agrupar conteúdo com o mesmo espaçamento e borda.
 class Panel extends StatelessWidget {
   final Widget child;
   final EdgeInsets padding;
@@ -109,6 +111,7 @@ class Panel extends StatelessWidget {
   );
 }
 
+/// Assinatura visual do LevaAí, reutilizada em cabeçalhos e telas de acesso.
 class Brand extends StatelessWidget {
   final bool light;
   const Brand({super.key, this.light = false});
@@ -142,6 +145,7 @@ class Brand extends StatelessWidget {
   );
 }
 
+/// Etiqueta que transforma o status técnico da reserva em um texto visível.
 class StatusBadge extends StatelessWidget {
   final String status;
   const StatusBadge(this.status, {super.key});
@@ -174,6 +178,7 @@ class StatusBadge extends StatelessWidget {
   }
 }
 
+/// Caixa de mensagem reutilizável para avisos, erros e orientações ao usuário.
 class Notice extends StatelessWidget {
   final String message;
   final bool error;
@@ -209,6 +214,7 @@ class Notice extends StatelessWidget {
   );
 }
 
+/// Campo de endereço com busca remota e retorno do ponto geocodificado escolhido.
 class AddressField extends StatefulWidget {
   final Api api;
   final String label;

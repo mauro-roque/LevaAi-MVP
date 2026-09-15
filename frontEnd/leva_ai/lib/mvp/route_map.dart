@@ -5,6 +5,7 @@ import 'api.dart';
 import 'ui.dart';
 import 'open_link_stub.dart' if (dart.library.js_interop) 'open_link_web.dart';
 
+/// Exibe uma prévia visual da rota sem tornar o mapa uma dependência crítica.
 class RouteMap extends StatelessWidget {
   final Json route;
   const RouteMap({super.key, required this.route});

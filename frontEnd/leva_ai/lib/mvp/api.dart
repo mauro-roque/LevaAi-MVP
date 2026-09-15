@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 typedef Json = Map<String, dynamic>;
 
+/// Erro padronizado devolvido pela API, com mensagem segura para a interface.
 class ApiException implements Exception {
   final String message;
   final int status;
@@ -12,10 +13,12 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
+/// Cliente HTTP central que mantém a sessão e a origem da API em um só lugar.
 class Api {
   final http.Client client;
   String? token;
   Api({http.Client? client}) : client = client ?? http.Client();
+  /// Prioriza `API_URL`; na web publicada, usa a origem do próprio Worker.
   static String get baseUrl {
     const configured = String.fromEnvironment('API_URL');
     if (configured.isNotEmpty) return configured;
@@ -23,6 +26,7 @@ class Api {
     return 'http://localhost:3000';
   }
 
+  /// Executa uma chamada autenticada e converte falhas em [ApiException].
   Future<dynamic> call(String path, {String method = 'GET', Json? body}) async {
     try {
       final request = http.Request(method, Uri.parse('$baseUrl/api$path'));
@@ -49,5 +53,6 @@ class Api {
     }
   }
 
+  /// Libera o cliente quando a aplicação ou um teste é encerrado.
   void dispose() => client.close();
 }

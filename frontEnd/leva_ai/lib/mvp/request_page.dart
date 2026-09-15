@@ -3,6 +3,7 @@ import 'api.dart';
 import 'ui.dart';
 import 'route_map.dart';
 
+/// Formulário que coleta a mudança ou frete e pede a cotação ao Worker.
 class RequestPage extends StatefulWidget {
   final Api api;
   final Json config;

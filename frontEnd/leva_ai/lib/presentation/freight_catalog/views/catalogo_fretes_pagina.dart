@@ -38,14 +38,15 @@ class _CatalogoFretesPaginaState extends State<CatalogoFretesPagina> {
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
-              children: ['Mudança', 'Carga pesada', 'Carreto pequeno']
-                  .map(
-                    (t) => FilterChip(
-                      label: Text(t),
-                      onSelected: (_) => setState(() {}),
-                    ),
-                  )
-                  .toList(),
+              children:
+                  ['Mudança', 'Carga pesada', 'Carreto pequeno']
+                      .map(
+                        (t) => FilterChip(
+                          label: Text(t),
+                          onSelected: (_) => setState(() {}),
+                        ),
+                      )
+                      .toList(),
             ),
             const SizedBox(height: 20),
             const Text(
@@ -56,11 +57,12 @@ class _CatalogoFretesPaginaState extends State<CatalogoFretesPagina> {
             ...widget.viewModel.transportadores.map(
               (t) => CartaoTransportador(
                 transportador: t,
-                aoTocar: () => Navigator.pushNamed(
-                  context,
-                  RotasApp.detalhes,
-                  arguments: t,
-                ),
+                aoTocar:
+                    () => Navigator.pushNamed(
+                      context,
+                      RotasApp.detalhes,
+                      arguments: t,
+                    ),
               ),
             ),
           ],

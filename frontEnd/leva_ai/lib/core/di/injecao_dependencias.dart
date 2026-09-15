@@ -8,7 +8,6 @@ import 'package:leva_ai/presentation/freight_catalog/viewmodels/catalogo_fretes_
 import 'package:leva_ai/presentation/freight_catalog/views/catalogo_fretes_pagina.dart';
 import 'package:leva_ai/presentation/freight_details/views/detalhes_frete_pagina.dart';
 
-
 abstract final class InjecaoDependencias {
   static final _obter = ObterTransportadoresCasoDeUso(
     RepositorioFreteImpl(FonteRemotaFreteMock()),
@@ -18,20 +17,24 @@ abstract final class InjecaoDependencias {
       case RotasApp.inicio:
       case RotasApp.catalogo:
         return MaterialPageRoute(
-          builder: (_) =>
-              CatalogoFretesPagina(viewModel: CatalogoFretesViewModel(_obter)),
+          builder:
+              (_) => CatalogoFretesPagina(
+                viewModel: CatalogoFretesViewModel(_obter),
+              ),
         );
       case RotasApp.detalhes:
         return MaterialPageRoute(
-          builder: (_) => DetalhesFretePagina(
-            transportador: ajustes.arguments! as TransportadorEntidade,
-          ),
+          builder:
+              (_) => DetalhesFretePagina(
+                transportador: ajustes.arguments! as TransportadorEntidade,
+              ),
         );
       default:
         return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(child: Text('Página não encontrada')),
-          ),
+          builder:
+              (_) => const Scaffold(
+                body: Center(child: Text('Página não encontrada')),
+              ),
         );
     }
   }

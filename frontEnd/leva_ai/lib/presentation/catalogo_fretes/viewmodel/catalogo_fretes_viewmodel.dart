@@ -7,7 +7,7 @@ class CatalogoFretesViewModel extends ChangeNotifier {
   final ObterTransportadoresCasoDeUso _obter;
   List<TransportadorEntidade> transportadores = [];
   bool carregando = false;
-  
+
   Future<void> carregar() async {
     carregando = true;
     notifyListeners();

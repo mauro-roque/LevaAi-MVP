@@ -1,2 +1,30 @@
-import '../../domain/entities/transportador_entidade.dart'; import '../../domain/entities/veiculo_entidade.dart';
-class TransportadorModelo extends TransportadorEntidade { const TransportadorModelo({required super.id, required super.nome, required super.avaliacao, required super.areaAtuacao, required super.veiculo, super.valorInicial}); factory TransportadorModelo.deJson(Map<String,dynamic> json) => TransportadorModelo(id: json['id'], nome: json['nome'], avaliacao: (json['avaliacao'] as num).toDouble(), areaAtuacao: json['areaAtuacao'], valorInicial: (json['valorInicial'] as num).toDouble(), veiculo: VeiculoEntidade(modelo: json['modelo'], tipo: json['tipo'], capacidadeKg: (json['capacidadeKg'] as num).toDouble(), volumeM3: (json['volumeM3'] as num).toDouble(), comprimentoM: 4, larguraM: 2, alturaM: 2)); }
+import '../../domain/entities/transportador_entidade.dart';
+import '../../domain/entities/veiculo_entidade.dart';
+
+class TransportadorModelo extends TransportadorEntidade {
+  const TransportadorModelo({
+    required super.id,
+    required super.nome,
+    required super.avaliacao,
+    required super.areaAtuacao,
+    required super.veiculo,
+    super.valorInicial,
+  });
+  factory TransportadorModelo.deJson(Map<String, dynamic> json) =>
+      TransportadorModelo(
+        id: json['id'],
+        nome: json['nome'],
+        avaliacao: (json['avaliacao'] as num).toDouble(),
+        areaAtuacao: json['areaAtuacao'],
+        valorInicial: (json['valorInicial'] as num).toDouble(),
+        veiculo: VeiculoEntidade(
+          modelo: json['modelo'],
+          tipo: json['tipo'],
+          capacidadeKg: (json['capacidadeKg'] as num).toDouble(),
+          volumeM3: (json['volumeM3'] as num).toDouble(),
+          comprimentoM: 4,
+          larguraM: 2,
+          alturaM: 2,
+        ),
+      );
+}

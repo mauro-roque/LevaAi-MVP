@@ -21,9 +21,7 @@ class CartaoTransportador extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              const CircleAvatar(
-                child: Icon(Icons.local_shipping_outlined),
-              ),
+              const CircleAvatar(child: Icon(Icons.local_shipping_outlined)),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(

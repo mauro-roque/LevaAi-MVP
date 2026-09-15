@@ -5,6 +5,7 @@ import 'api.dart';
 import 'ui.dart';
 import 'route_map.dart';
 
+/// Lista as solicitações e permite acompanhar a evolução de cada serviço.
 class BookingsPage extends StatefulWidget {
   final Api api;
   final bool provider, historyOnly, dashboard;
