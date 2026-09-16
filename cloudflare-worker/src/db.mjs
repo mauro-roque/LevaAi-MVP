@@ -10,6 +10,7 @@ export async function openDatabase(env) {
   );
   const client = new Client({
     connectionString: env.HYPERDRIVE.connectionString,
+    connectionTimeoutMillis: 8000,
   });
   try {
     await client.connect();
@@ -36,7 +37,9 @@ export async function openDatabase(env) {
       }
     },
     close() {
-      return client.end();
+      // O Hyperdrive administra o pool. O encerramento não deve atrasar a
+      // resposta HTTP enquanto o cliente liberta a sessão em segundo plano.
+      void client.end().catch(() => {});
     },
   };
 }
