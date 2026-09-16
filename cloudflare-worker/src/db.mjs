@@ -36,10 +36,8 @@ export async function openDatabase(env) {
         throw error;
       }
     },
-    close() {
-      // O Hyperdrive administra o pool. O encerramento não deve atrasar a
-      // resposta HTTP enquanto o cliente liberta a sessão em segundo plano.
-      void client.end().catch(() => {});
-    },
+    // O Hyperdrive administra o pool do PostgreSQL. Não encerrar o cliente
+    // manualmente evita que a resposta HTTP aguarde o desligamento do socket.
+    close() {},
   };
 }
