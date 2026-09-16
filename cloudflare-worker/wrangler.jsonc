@@ -8,6 +8,12 @@
     "DEMO_MODE": "true",
     "MAPS_USER_AGENT": "LevaAi-AcademicMVP/0.1"
   },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "fbc23a2b3526475e8b1855a8dc8b97c8"
+    }
+  ],
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
