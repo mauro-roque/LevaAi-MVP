@@ -14,6 +14,14 @@
       "id": "fbc23a2b3526475e8b1855a8dc8b97c8"
     }
   ],
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": true,
+      "persist": true
+    }
+  },
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
