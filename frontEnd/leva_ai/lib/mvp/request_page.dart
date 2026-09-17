@@ -593,6 +593,31 @@ class _RequestPageState extends State<RequestPage> {
             ],
           ),
           const SizedBox(height: 18),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3F6FF),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.route_outlined, color: blue, size: 19),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${decimal(d['providerDistanceKm'])} km até a coleta',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                Text(
+                  '${money(v['pricePerKmCents'])} por km',
+                  style: const TextStyle(color: blue, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
           Wrap(
             spacing: 18,
             runSpacing: 8,
@@ -600,8 +625,8 @@ class _RequestPageState extends State<RequestPage> {
               Text(
                 '${decimal(v['capacityKg'])} kg / ${decimal(v['volumeM3'])} m³',
               ),
-              Text('${decimal(d['providerDistanceKm'])} km da origem'),
-              Text('${money(v['pricePerKmCents'])}/km'),
+              Text('${decimal(d['route']['distanceKm'])} km de percurso'),
+              Text('${decimal(d['route']['durationMinutes'])} min estimados'),
             ],
           ),
           const SizedBox(height: 14),

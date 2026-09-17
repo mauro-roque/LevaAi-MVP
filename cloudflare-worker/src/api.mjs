@@ -54,9 +54,9 @@ export function configuration(env) {
 
 /** Cria dados demonstrativos apenas quando o banco ainda está vazio. */
 export async function seed(db) {
-  if ((await db.query("SELECT id FROM users LIMIT 1")).length) return;
-  const password = await hashPassword("LevaAi@123");
   await db.transaction(async () => {
+    if ((await db.query("SELECT id FROM users LIMIT 1")).length) return;
+    const password = await hashPassword("LevaAi@123");
     for (const user of [
       ["demo-cliente", "Mariana Silva", "cliente@levaai.demo", "cliente"],
       [
@@ -441,7 +441,13 @@ export function createApi(db, config) {
         }
         return {
           route,
-          quotes: quotes.sort((a, b) => a.data.totalCents - b.data.totalCents),
+          // A escolha começa por quem consegue chegar mais perto da coleta;
+          // em caso de empate, o menor valor total fica primeiro.
+          quotes: quotes.sort(
+            (a, b) =>
+              a.data.providerDistanceKm - b.data.providerDistanceKm ||
+              a.data.totalCents - b.data.totalCents,
+          ),
         };
       }
       if (method === "POST" && path === "/api/bookings") {

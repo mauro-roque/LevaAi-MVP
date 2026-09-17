@@ -17,7 +17,8 @@ const fromBase64 = (value) =>
     ),
     (char) => char.charCodeAt(0),
   );
-async function derive(password, salt, iterations = 210000) {
+// Workers aceita no máximo 100 mil iterações no PBKDF2 via Web Crypto.
+async function derive(password, salt, iterations = 100000) {
   const source = await crypto.subtle.importKey(
     "raw",
     encoder.encode(password),
@@ -44,7 +45,7 @@ export const id = () => crypto.randomUUID();
 /** Cria um hash PBKDF2 serializável para armazenar uma senha. */
 export async function hashPassword(password) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  return `pbkdf2:210000:${toBase64(salt)}:${toBase64(await derive(password, salt))}`;
+  return `pbkdf2:100000:${toBase64(salt)}:${toBase64(await derive(password, salt))}`;
 }
 /** Confere uma senha sem expor detalhes do hash ou da falha. */
 export async function verifyPassword(password, stored) {

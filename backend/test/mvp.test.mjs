@@ -187,6 +187,15 @@ test("MVP: cadastro, autorização, orçamento, reserva, Pix, status e avaliaç�
       });
       assert.equal(result.status, 200);
       assert.equal(result.data.quotes.length, 3);
+      for (var i = 1; i < result.data.quotes.length; i++) {
+        const previous = result.data.quotes[i - 1].data;
+        const current = result.data.quotes[i].data;
+        assert(
+          previous.providerDistanceKm < current.providerDistanceKm ||
+            (previous.providerDistanceKm === current.providerDistanceKm &&
+              previous.totalCents <= current.totalCents),
+        );
+      }
       quote = result.data.quotes.find((q) => q.vehicle_id === "demo-van");
       assert.equal(
         quote.data.totalCents,

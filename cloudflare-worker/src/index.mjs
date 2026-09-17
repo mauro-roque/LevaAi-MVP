@@ -13,6 +13,20 @@ function securityHeaders(headers) {
   headers.set("Cache-Control", "no-store");
 }
 
+/** Autoriza o domínio publicado e o Flutter Web executado localmente. */
+function isAllowedOrigin(origin, apiOrigin) {
+  if (origin === apiOrigin) return true;
+  try {
+    const url = new URL(origin);
+    return (
+      url.protocol === "http:" &&
+      ["localhost", "127.0.0.1"].includes(url.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
 /** Limite simples por IP e rota para reduzir abuso em pontos sensíveis. */
 function rateLimit(request, path) {
   const ip = request.headers.get("CF-Connecting-IP") || "unknown";
@@ -70,7 +84,7 @@ export default {
       if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
       const origin = request.headers.get("Origin");
       if (origin) {
-        ensure(origin === url.origin, "Origem não autorizada.", 403);
+        ensure(isAllowedOrigin(origin, url.origin), "Origem não autorizada.", 403);
         headers.set("Access-Control-Allow-Origin", origin);
         headers.set("Vary", "Origin");
         headers.set(

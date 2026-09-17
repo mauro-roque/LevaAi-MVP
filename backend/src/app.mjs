@@ -415,7 +415,13 @@ export function createApp(db, config, overrides = {}) {
       }
       return {
         route,
-        quotes: quotes.sort((a, b) => a.data.totalCents - b.data.totalCents),
+        // A proximidade reduz o tempo até a coleta. O preço é o critério de
+        // desempate para que opções equivalentes sejam fáceis de comparar.
+        quotes: quotes.sort(
+          (a, b) =>
+            a.data.providerDistanceKm - b.data.providerDistanceKm ||
+            a.data.totalCents - b.data.totalCents,
+        ),
       };
     }
     if (method === "POST" && path === "/api/bookings") {
