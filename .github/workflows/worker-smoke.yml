@@ -15,3 +15,9 @@ jobs:
             https://leva-ai-mvp.mauroroqueestudos.workers.dev/api/health)"
           echo "$response"
           echo "$response" | grep -q '"status":"ok"'
+      - name: Validar acesso ao Supabase pelo Worker
+        run: |
+          response="$(curl --fail --silent --show-error --max-time 30 \
+            https://leva-ai-mvp.mauroroqueestudos.workers.dev/api/health/database)"
+          echo "$response"
+          echo "$response" | grep -q '"database":"connected"'

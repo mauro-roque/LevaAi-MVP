@@ -119,6 +119,18 @@ export default {
         );
       const db = await openDatabase(env);
       try {
+        // Checa a rota completa Worker → Hyperdrive → PostgreSQL sem expor
+        // dados nem depender de credenciais de uma conta demonstrativa.
+        if (
+          request.method === "GET" &&
+          url.pathname === "/api/health/database"
+        ) {
+          await db.query("SELECT 1");
+          return Response.json(
+            { status: "ok", database: "connected" },
+            { headers },
+          );
+        }
         if (config.demo) await seed(db);
         const api = createApi(db, config),
           body = await bodyOf(request);
