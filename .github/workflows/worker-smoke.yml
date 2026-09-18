@@ -1,0 +1,17 @@
+name: Verificar Worker publicado
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consultar disponibilidade da API
+        run: |
+          response="$(curl --fail --silent --show-error --max-time 20 \
+            https://leva-ai-mvp.mauroroqueestudos.workers.dev/api/health)"
+          echo "$response"
+          echo "$response" | grep -q '"status":"ok"'
