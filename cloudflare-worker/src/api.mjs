@@ -54,10 +54,12 @@ export function configuration(env) {
 
 /** Cria dados demonstrativos apenas quando o banco ainda está vazio. */
 export async function seed(db) {
-  await db.transaction(async () => {
-    if ((await db.query("SELECT id FROM users LIMIT 1")).length) return;
-    const password = await hashPassword("LevaAi@123");
-    for (const user of [
+  // A requisição já é protegida por uma transação no ponto de entrada. Evitar
+  // abrir uma segunda transação aqui mantém o comportamento compatível com o
+  // pool transacional do Hyperdrive.
+  if ((await db.query("SELECT id FROM users LIMIT 1")).length) return;
+  const password = await hashPassword("LevaAi@123");
+  for (const user of [
       ["demo-cliente", "Mariana Silva", "cliente@levaai.demo", "cliente"],
       [
         "demo-prestador",
@@ -71,21 +73,21 @@ export async function seed(db) {
         "horizonte@levaai.demo",
         "prestador",
       ],
-    ]) {
-      await db.query(
-        "INSERT INTO users(id,name,email,password_hash,role,phone,created_at) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (id) DO NOTHING",
-        [
-          user[0],
-          user[1],
-          user[2],
-          password,
-          user[3],
-          "(11) 99999-0000",
-          now(),
-        ],
-      );
-    }
-    for (const vehicle of [
+  ]) {
+    await db.query(
+      "INSERT INTO users(id,name,email,password_hash,role,phone,created_at) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (id) DO NOTHING",
+      [
+        user[0],
+        user[1],
+        user[2],
+        password,
+        user[3],
+        "(11) 99999-0000",
+        now(),
+      ],
+    );
+  }
+  for (const vehicle of [
       [
         "demo-van",
         "demo-prestador",
@@ -119,25 +121,24 @@ export async function seed(db) {
         3,
         9000,
       ],
-    ]) {
-      const data = {
-        model: vehicle[2],
-        type: vehicle[3],
-        capacityKg: vehicle[4],
-        volumeM3: vehicle[5],
-        pricePerKmCents: vehicle[6],
-        helpers: vehicle[7],
-        helperPriceCents: vehicle[8],
-        base: demoPlaces[0],
-        radiusKm: 60,
-        active: true,
-      };
-      await db.query(
-        "INSERT INTO vehicles(id,provider_id,data) VALUES($1,$2,$3) ON CONFLICT (id) DO NOTHING",
-        [vehicle[0], vehicle[1], JSON.stringify(data)],
-      );
-    }
-  });
+  ]) {
+    const data = {
+      model: vehicle[2],
+      type: vehicle[3],
+      capacityKg: vehicle[4],
+      volumeM3: vehicle[5],
+      pricePerKmCents: vehicle[6],
+      helpers: vehicle[7],
+      helperPriceCents: vehicle[8],
+      base: demoPlaces[0],
+      radiusKm: 60,
+      active: true,
+    };
+    await db.query(
+      "INSERT INTO vehicles(id,provider_id,data) VALUES($1,$2,$3) ON CONFLICT (id) DO NOTHING",
+      [vehicle[0], vehicle[1], JSON.stringify(data)],
+    );
+  }
 }
 
 /** Cria o roteador de negócio independente do transporte HTTP do Worker. */

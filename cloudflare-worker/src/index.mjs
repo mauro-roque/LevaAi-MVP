@@ -2,6 +2,7 @@ import { openDatabase } from "./db.mjs";
 import { createApi, configuration, seed } from "./api.mjs";
 import { AppError, ensure } from "./validation.mjs";
 import { id } from "./auth.mjs";
+import { demoPlaces } from "./maps.mjs";
 
 const buckets = new Map();
 
@@ -99,8 +100,24 @@ export default {
       if (request.method === "OPTIONS")
         return new Response(null, { status: 204, headers });
       rateLimit(request, url.pathname);
-      const config = configuration(env),
-        db = await openDatabase(env);
+      const config = configuration(env);
+      // Endpoints de disponibilidade não dependem do banco e continuam
+      // informativos mesmo se o provedor estiver em manutenção.
+      if (request.method === "GET" && url.pathname === "/api/health")
+        return Response.json(
+          { status: "ok", runtime: "cloudflare-worker" },
+          { headers },
+        );
+      if (request.method === "GET" && url.pathname === "/api/config")
+        return Response.json(
+          {
+            demo: config.demo,
+            demoPlaces: config.demo ? demoPlaces : [],
+            paymentMode: config.demo ? "demo" : "mercado_pago",
+          },
+          { headers },
+        );
+      const db = await openDatabase(env);
       try {
         if (config.demo) await seed(db);
         const api = createApi(db, config),
