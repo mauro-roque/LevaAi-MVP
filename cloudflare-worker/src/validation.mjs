@@ -1,5 +1,6 @@
 /** Erro esperado da aplicação, convertido em resposta HTTP segura. */
 export class AppError extends Error {
+  /** Guarda a mensagem segura e o status HTTP esperado pela camada de entrada. */
   constructor(message, status = 400) {
     super(message);
     this.status = status;

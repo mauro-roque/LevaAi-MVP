@@ -8,16 +8,21 @@ class RequestPage extends StatefulWidget {
   final Api api;
   final Json config;
   final VoidCallback onBooked;
+  final Future<bool> Function()? requireAuthentication;
+
+  /// Recebe as ações que consultam a API e atualizam a navegação após contratar.
   const RequestPage({
     super.key,
     required this.api,
     required this.config,
     required this.onBooked,
+    this.requireAuthentication,
   });
   @override
   State<RequestPage> createState() => _RequestPageState();
 }
 
+/// Controla campos, resultados de cotação e o rascunho do visitante.
 class _RequestPageState extends State<RequestPage> {
   final form = GlobalKey<FormState>();
   final items = TextEditingController(),
@@ -27,9 +32,41 @@ class _RequestPageState extends State<RequestPage> {
   Json? origin, destination, result;
   bool demoRoute = false, loading = false;
   String type = 'frete';
+  String sortBy = 'Menor preço';
   int helpers = 0;
   String? error;
   @override
+  /// Restaura dados informados antes de o visitante entrar na conta.
+  void initState() {
+    super.initState();
+    final d = widget.api.draft;
+    if (d != null) {
+      origin = d['origin'];
+      destination = d['destination'];
+      items.text = d['items'];
+      weight.text = '${d['weightKg']}';
+      volume.text = '${d['volumeM3']}';
+      helpers = d['helpers'];
+      type = d['type'];
+      date = DateTime.parse(d['date']);
+      demoRoute = d['demoRoute'] == true;
+    }
+  }
+
+  /// Converte o formulário atual para o contrato recebido pelo Worker.
+  Json get input => {
+    'origin': origin,
+    'destination': destination,
+    'date': date.toIso8601String().substring(0, 10),
+    'type': type,
+    'items': items.text,
+    'weightKg': double.tryParse(weight.text.replaceAll(',', '.')) ?? 0,
+    'volumeM3': double.tryParse(volume.text.replaceAll(',', '.')) ?? 0,
+    'helpers': helpers,
+    'demoRoute': demoRoute,
+  };
+  @override
+  /// Libera os controladores vinculados ao formulário de solicitação.
   void dispose() {
     items.dispose();
     weight.dispose();
@@ -37,10 +74,12 @@ class _RequestPageState extends State<RequestPage> {
     super.dispose();
   }
 
+  /// Descarta resultados quando um campo que afeta preço ou compatibilidade muda.
   void invalidate() {
     if (result != null) setState(() => result = null);
   }
 
+  /// Preenche uma rota conhecida para a demonstração do projeto.
   void useExample() {
     final places = widget.config['demoPlaces'] as List;
     setState(() {
@@ -56,6 +95,7 @@ class _RequestPageState extends State<RequestPage> {
     });
   }
 
+  /// Valida dados e pesquisa veículos compatíveis sem exigir autenticação.
   Future<void> quote() async {
     if (loading || !form.currentState!.validate()) return;
     if (origin == null || destination == null) {
@@ -93,18 +133,57 @@ class _RequestPageState extends State<RequestPage> {
     }
   }
 
+  /// Exige login, reconfirma a cotação do visitante e cria a solicitação.
   Future<void> book(Json quote) async {
+    if (loading) return;
+    widget.api.draft = input;
     setState(() {
       loading = true;
       error = null;
     });
     try {
+      if (widget.requireAuthentication != null &&
+          !await widget.requireAuthentication!()) {
+        return;
+      }
+      if (!mounted) {
+        return;
+      }
+      if (quote['preview'] == true) {
+        final refreshed = await widget.api.call(
+          '/quotes',
+          method: 'POST',
+          body: widget.api.draft,
+        );
+        final matching =
+            (refreshed['quotes'] as List)
+                .where((q) => q['vehicle_id'] == quote['vehicle_id'])
+                .toList();
+        if (matching.isEmpty) {
+          throw ApiException(
+            'O prestador não está mais disponível. Faça uma nova busca.',
+          );
+        }
+        final current = Map<String, dynamic>.from(matching.first);
+        if (!mounted) {
+          return;
+        }
+        if (current['data']['totalCents'] != quote['data']['totalCents']) {
+          setState(() => result = refreshed);
+          throw ApiException(
+            'O valor foi atualizado. Confira o novo preço e confirme sua escolha.',
+          );
+        }
+        quote = current;
+      }
+      if (!mounted || !await confirmBooking(quote) || !mounted) return;
       await widget.api.call(
         '/bookings',
         method: 'POST',
         body: {'quoteId': quote['id']},
       );
       if (mounted) widget.onBooked();
+      widget.api.draft = null;
     } catch (e) {
       if (mounted) setState(() => error = '$e');
     } finally {
@@ -112,12 +191,213 @@ class _RequestPageState extends State<RequestPage> {
     }
   }
 
+  /// Permite revisar preço, rota e carga antes de enviar o pedido ao prestador.
+  Future<bool> confirmBooking(Json quote) async {
+    final data = quote['data'], request = data['input'];
+    return await showDialog<bool>(
+          context: context,
+          builder:
+              (c) => AlertDialog(
+                title: const Text('Confira seu frete'),
+                content: SizedBox(
+                  width: 420,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          data['providerName'],
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(data['vehicle']['model']),
+                        const SizedBox(height: 16),
+                        Text('Data: ${dateLabel(request['date'])}'),
+                        Text('Origem: ${request['origin']['label']}'),
+                        Text('Destino: ${request['destination']['label']}'),
+                        const SizedBox(height: 12),
+                        Text(request['items']),
+                        Text(
+                          '${decimal(request['weightKg'])} kg • ${decimal(request['volumeM3'])} m³ • ${request['helpers']} ajudante(s)',
+                        ),
+                        const Divider(height: 28),
+                        Text(
+                          'Total: ${money(data['totalCents'])}',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'O pedido aguarda o aceite do prestador. O Pix será liberado depois; você não paga agora.',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(c, false),
+                    child: const Text('Voltar à busca'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(c, true),
+                    child: const Text('Confirmar solicitação'),
+                  ),
+                ],
+              ),
+        ) ??
+        false;
+  }
+
+  /// Ordena uma cópia das cotações sem alterar os dados recebidos da API.
+  List<Json> get sortedQuotes {
+    final quotes =
+        (result?['quotes'] as List? ?? [])
+            .map((q) => Map<String, dynamic>.from(q))
+            .toList();
+    quotes.sort((a, b) {
+      final x = a['data'], y = b['data'];
+      final int comparison;
+      if (sortBy == 'Melhor avaliação') {
+        comparison = ((y['rating'] ?? -1) as num).compareTo(
+          (x['rating'] ?? -1) as num,
+        );
+      } else if (sortBy == 'Mais perto da coleta') {
+        comparison = (x['providerDistanceKm'] as num).compareTo(
+          y['providerDistanceKm'] as num,
+        );
+      } else {
+        comparison = (x['totalCents'] as num).compareTo(y['totalCents'] as num);
+      }
+      return comparison != 0
+          ? comparison
+          : (x['totalCents'] as num).compareTo(y['totalCents'] as num);
+    });
+    return quotes;
+  }
+
+  /// Valida os valores positivos de peso e volume informados pelo cliente.
   String? positive(String? value) {
     final n = double.tryParse((value ?? '').replaceAll(',', '.'));
     return n == null || n <= 0 ? 'Informe um valor maior que zero.' : null;
   }
 
+  /// Exibe informações públicas, veículos e avaliações do prestador.
+  Future<void> showProvider(Json q) async {
+    try {
+      final data = await widget.api.call(
+        '/providers/${q['data']['providerId']}',
+      );
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder:
+            (c) => AlertDialog(
+              title: Text(data['name']),
+              content: SizedBox(
+                width: 440,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(data['region'] ?? 'Região informada na busca'),
+                      const SizedBox(height: 16),
+                      for (final v in data['vehicles'])
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.local_shipping_outlined),
+                          title: Text(v['data']['model']),
+                          subtitle: Text(
+                            '${v['data']['capacityKg']} kg • ${v['data']['volumeM3']} m³ • ${money(v['data']['pricePerKmCents'])}/km',
+                          ),
+                        ),
+                      const Divider(),
+                      const Text(
+                        'Avaliações recentes',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      if ((data['reviews'] as List).isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 12),
+                          child: Text(
+                            'Este prestador ainda não recebeu avaliações.',
+                          ),
+                        ),
+                      for (final r in data['reviews'])
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text('${r['rating']} de 5 estrelas'),
+                          subtitle: Text(r['comment'] ?? ''),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(c),
+                  child: const Text('Voltar'),
+                ),
+              ],
+            ),
+      );
+    } catch (e) {
+      if (mounted) setState(() => error = '$e');
+    }
+  }
+
+  /// Aplica um endereço favorito como origem ou destino da solicitação.
+  Future<void> useSaved(bool forOrigin) async {
+    try {
+      final addresses = await widget.api.call('/addresses') as List;
+      if (!mounted) return;
+      final picked = await showDialog<Json>(
+        context: context,
+        builder:
+            (c) => SimpleDialog(
+              title: const Text('Endereços favoritos'),
+              children: [
+                if (addresses.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text('Salve um endereço em Meu perfil.'),
+                  ),
+                for (final a in addresses)
+                  SimpleDialogOption(
+                    onPressed:
+                        () => Navigator.pop(
+                          c,
+                          Map<String, dynamic>.from(a['point']),
+                        ),
+                    child: ListTile(
+                      title: Text(a['name']),
+                      subtitle: Text(a['point']['label']),
+                    ),
+                  ),
+              ],
+            ),
+      );
+      if (picked != null && mounted) {
+        setState(() {
+          if (forOrigin) {
+            origin = picked;
+          } else {
+            destination = picked;
+          }
+          result = null;
+          demoRoute = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => error = '$e');
+    }
+  }
+
   @override
+  /// Constrói formulário, rota e cartões de comparação de cotações.
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= 1150;
     final formPanel = Panel(
@@ -141,6 +421,20 @@ class _RequestPageState extends State<RequestPage> {
                 ],
               ),
               const SizedBox(height: 22),
+              if (widget.api.token != null)
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    TextButton(
+                      onPressed: () => useSaved(true),
+                      child: const Text('Origem salva'),
+                    ),
+                    TextButton(
+                      onPressed: () => useSaved(false),
+                      child: const Text('Destino salvo'),
+                    ),
+                  ],
+                ),
               AddressField(
                 api: widget.api,
                 label: 'Endereço de origem',
@@ -508,7 +802,22 @@ class _RequestPageState extends State<RequestPage> {
                 'Nenhum veículo disponível para essa data e carga. Tente outra data ou confira peso, volume e ajudantes.',
               ),
             ),
-          for (final q in result!['quotes'])
+          if ((result!['quotes'] as List).isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: DropdownButtonFormField<String>(
+                value: sortBy,
+                decoration: const InputDecoration(
+                  labelText: 'Ordenar prestadores',
+                ),
+                items:
+                    ['Menor preço', 'Mais perto da coleta', 'Melhor avaliação']
+                        .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                        .toList(),
+                onChanged: loading ? null : (s) => setState(() => sortBy = s!),
+              ),
+            ),
+          for (final q in sortedQuotes)
             Padding(
               padding: const EdgeInsets.only(bottom: 16),
               child: quoteCard(Map<String, dynamic>.from(q)),
@@ -547,6 +856,8 @@ class _RequestPageState extends State<RequestPage> {
       ],
     ),
   );
+
+  /// Renderiza uma cotação com detalhes do veículo e ações relacionadas.
   Widget quoteCard(Json q) {
     final d = q['data'], v = d['vehicle'];
     return Panel(
@@ -572,7 +883,7 @@ class _RequestPageState extends State<RequestPage> {
                       ),
                     ),
                     Text(
-                      '${v['model']} • ${v['type']}',
+                      '${v['model']} • ${vehicleTypeLabel(v['type'])}',
                       style: const TextStyle(color: muted, fontSize: 12),
                     ),
                   ],
@@ -612,7 +923,10 @@ class _RequestPageState extends State<RequestPage> {
                 ),
                 Text(
                   '${money(v['pricePerKmCents'])} por km',
-                  style: const TextStyle(color: blue, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    color: blue,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
@@ -651,6 +965,10 @@ class _RequestPageState extends State<RequestPage> {
               FilledButton(
                 onPressed: loading ? null : () => book(q),
                 child: const Text('Solicitar este prestador'),
+              ),
+              OutlinedButton(
+                onPressed: loading ? null : () => showProvider(q),
+                child: const Text('Ver detalhes'),
               ),
             ],
           ),

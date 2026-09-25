@@ -9,6 +9,8 @@ import 'route_map.dart';
 class BookingsPage extends StatefulWidget {
   final Api api;
   final bool provider, historyOnly, dashboard;
+
+  /// Define se a lista será exibida para cliente, prestador, histórico ou painel.
   const BookingsPage({
     super.key,
     required this.api,
@@ -20,16 +22,19 @@ class BookingsPage extends StatefulWidget {
   State<BookingsPage> createState() => _BookingsPageState();
 }
 
+/// Controla a atualização da lista e ações permitidas em cada solicitação.
 class _BookingsPageState extends State<BookingsPage> {
   List<dynamic>? bookings;
   String? error, busy;
   String filter = 'Todos';
   @override
+  /// Carrega as solicitações assim que a página entra na árvore.
   void initState() {
     super.initState();
     load();
   }
 
+  /// Busca as solicitações autorizadas para o usuário atual.
   Future<void> load() async {
     try {
       final rows = await widget.api.call('/bookings') as List;
@@ -44,8 +49,33 @@ class _BookingsPageState extends State<BookingsPage> {
     }
   }
 
+  /// Executa uma ação da solicitação e substitui seu cartão pelo retorno atualizado.
   Future<void> action(Json booking, String endpoint, [Json? body]) async {
     if (busy != null) return;
+    if (endpoint == 'status' &&
+        (body?['status'] as String? ?? '').startsWith('cancelado')) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder:
+            (c) => AlertDialog(
+              title: const Text('Cancelar este frete?'),
+              content: const Text(
+                'O prestador será liberado para outros pedidos. Antes da emissão do Pix, não há pagamento a reembolsar.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(c, false),
+                  child: const Text('Manter frete'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(c, true),
+                  child: const Text('Confirmar cancelamento'),
+                ),
+              ],
+            ),
+      );
+      if (confirmed != true || !mounted) return;
+    }
     setState(() {
       busy = booking['id'];
       error = null;
@@ -69,6 +99,7 @@ class _BookingsPageState extends State<BookingsPage> {
     }
   }
 
+  /// Coleta uma avaliação e a envia somente depois da confirmação do cliente.
   Future<void> review(Json booking) async {
     var rating = 5;
     final comment = TextEditingController();
@@ -138,14 +169,23 @@ class _BookingsPageState extends State<BookingsPage> {
     if (result != null && mounted) await action(booking, 'review', result);
   }
 
+  /// Identifica solicitações que não devem mais aparecer como em andamento.
   bool isClosed(Json b) => [
     'concluido',
     'avaliado',
     'cancelado_cliente',
+    'cancelado_prestador',
     'recusado_prestador',
     'pagamento_recusado',
   ].contains(b['status']);
+
+  /// Destaca a próxima decisão do perfil atual, sem incluir espera pelo outro lado.
+  bool needsAction(Json booking) => (widget.provider
+          ? ['aguardando_prestador', 'agendado', 'a_caminho', 'em_andamento']
+          : ['pagamento_pendente', 'concluido'])
+      .contains(booking['status']);
   @override
+  /// Monta filtros, resumo e cartões das solicitações do perfil atual.
   Widget build(BuildContext context) {
     final rows =
         (bookings ?? [])
@@ -154,6 +194,8 @@ class _BookingsPageState extends State<BookingsPage> {
               (b) =>
                   widget.historyOnly
                       ? isClosed(b)
+                      : filter == 'Precisa de você'
+                      ? needsAction(b)
                       : filter == 'Em andamento'
                       ? !isClosed(b)
                       : filter == 'Finalizados'
@@ -228,7 +270,7 @@ class _BookingsPageState extends State<BookingsPage> {
             child: Wrap(
               spacing: 10,
               children:
-                  ['Todos', 'Em andamento', 'Finalizados']
+                  ['Todos', 'Precisa de você', 'Em andamento', 'Finalizados']
                       .map(
                         (s) => ChoiceChip(
                           label: Text(s),
@@ -248,26 +290,34 @@ class _BookingsPageState extends State<BookingsPage> {
             ),
           ),
         if (bookings != null && rows.isEmpty)
-          const Panel(
+          Panel(
             child: SizedBox(
               width: double.infinity,
               child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 36),
+                padding: const EdgeInsets.symmetric(vertical: 36),
                 child: Column(
                   children: [
-                    Icon(Icons.inventory_2_outlined, size: 48, color: muted),
-                    SizedBox(height: 16),
+                    const Icon(
+                      Icons.inventory_2_outlined,
+                      size: 48,
+                      color: muted,
+                    ),
+                    const SizedBox(height: 16),
                     Text(
-                      'Nenhum frete por aqui ainda.',
-                      style: TextStyle(
+                      filter == 'Precisa de você'
+                          ? 'Tudo em dia por aqui.'
+                          : 'Nenhum frete neste filtro.',
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
-                      'Suas solicitações aparecerão nesta página.',
-                      style: TextStyle(color: muted),
+                      filter == 'Precisa de você'
+                          ? 'Você não tem ações pendentes nesta lista.'
+                          : 'Atualize a lista ou escolha outro filtro.',
+                      style: const TextStyle(color: muted),
                     ),
                   ],
                 ),
@@ -310,6 +360,8 @@ class _BookingsPageState extends State<BookingsPage> {
           ),
         ),
       );
+
+  /// Renderiza a solicitação com o conjunto de ações válido para seu status.
   Widget bookingCard(Json b) {
     final d = b['data'], input = d['input'], payment = b['payment'];
     final status = b['status'] as String, loading = busy != null;
@@ -562,6 +614,7 @@ class _BookingsPageState extends State<BookingsPage> {
     );
   }
 
+  /// Formata um horário ISO para a leitura curta usada no histórico visual.
   String _time(String value) {
     final dt = DateTime.parse(value).toLocal();
     return '${dt.day}/${dt.month} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';

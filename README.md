@@ -6,7 +6,7 @@ O MVP foi implementado neste repositório com **Flutter Web + Cloudflare Worker 
 
 Na raiz do projeto, execute `./Iniciar-MVP.ps1` e abra **http://127.0.0.1:3000**. As contas de teste estão disponíveis nos botões **Testar cliente** e **Testar prestador**. Para recompilar: `./Iniciar-MVP.ps1 -Recompilar`.
 
-Consulte o **[guia completo do MVP](docs/MVP.md)** para o roteiro de apresentação, configuração da Cloudflare e Supabase, mapas, Pix e limitações. O Pix real depende de configuração e homologação; o modo padrão não gera cobranças. O banco remoto existente não foi alterado.
+Consulte o **[guia atualizado do MVP](docs/ENTREGA-MVP.md)** para executar, configurar o banco original e publicar. A versão atual permite pesquisar sem conta, solicita login somente ao contratar e usa as tabelas em português do modelo enviado. A execução local utiliza PostgreSQL embarcado (PGlite). Pix real e recuperação por e-mail dependem de configuração de provedores.
 
 ---
 

@@ -9,6 +9,34 @@ import 'package:leva_ai/mvp/request_page.dart';
 import 'package:leva_ai/mvp/ui.dart';
 
 void main() {
+  testWidgets(
+    'visitante vê apresentação, pesquisa e volta do login sem perder dados',
+    (tester) async {
+      final api = Api(
+        client: MockClient(
+          (r) async => http.Response(jsonEncode({'demo': false}), 200),
+        ),
+      );
+      await tester.pumpWidget(LevaAiMvp(api: api));
+      await tester.pumpAndSettle();
+      expect(find.text('Seu próximo destino começa aqui.'), findsOneWidget);
+      await tester.tap(find.text('Pular'));
+      await tester.pumpAndSettle();
+      expect(find.text('De onde para onde?'), findsOneWidget);
+      expect(find.widgetWithText(TextFormField, 'Senha'), findsNothing);
+      await tester.tap(find.text('Entrar'));
+      await tester.pumpAndSettle();
+      expect(find.text('Sua busca está salva.'), findsNothing);
+      expect(
+        find.text('Entre para continuar. Sua busca está salva.'),
+        findsOneWidget,
+      );
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(find.text('De onde para onde?'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets('login responde a falha da API sem perder o formulário', (
     tester,
   ) async {
@@ -23,7 +51,12 @@ void main() {
         );
       }),
     );
-    await tester.pumpWidget(LevaAiMvp(api: api));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: appTheme(),
+        home: AuthPage(api: api, demo: true, onAuthenticated: (_) {}),
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.enterText(
       find.widgetWithText(TextFormField, 'E-mail'),
@@ -46,12 +79,20 @@ void main() {
         (_) async => http.Response(
           jsonEncode({'error': 'Configuração do banco pendente.'}),
           503,
+          headers: {'content-type': 'application/json; charset=utf-8'},
         ),
       ),
     );
     await tester.pumpWidget(LevaAiMvp(api: api));
     await tester.pumpAndSettle();
-    expect(find.text('Estamos preparando sua conexão segura.'), findsOneWidget);
+    expect(
+      find.text('Estamos preparando sua conexão segura.'),
+      findsOneWidget,
+      reason: tester
+          .widgetList<Text>(find.byType(Text))
+          .map((t) => t.data)
+          .join(' | '),
+    );
     expect(find.text('Verificar novamente'), findsOneWidget);
     api.dispose();
   });

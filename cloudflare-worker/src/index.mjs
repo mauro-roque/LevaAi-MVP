@@ -1,5 +1,5 @@
 import { openDatabase } from "./db.mjs";
-import { createApi, configuration, seed } from "./api.mjs";
+import { createApi, configuration, seed } from "./normalized-api.mjs";
 import { AppError, ensure } from "./validation.mjs";
 import { id } from "./auth.mjs";
 import { demoPlaces } from "./maps.mjs";
@@ -72,101 +72,111 @@ async function bodyOf(request) {
 }
 
 /** Entrada HTTP do Worker: aplica segurança, banco e roteamento da API. */
-export default {
-  async fetch(request, env) {
-    const requestId = id(),
-      url = new URL(request.url),
-      headers = new Headers({
-        "Content-Type": "application/json; charset=utf-8",
-        "X-Request-Id": requestId,
-      });
-    securityHeaders(headers);
-    try {
-      if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
-      const origin = request.headers.get("Origin");
-      if (origin) {
-        ensure(isAllowedOrigin(origin, url.origin), "Origem não autorizada.", 403);
-        headers.set("Access-Control-Allow-Origin", origin);
-        headers.set("Vary", "Origin");
-        headers.set(
-          "Access-Control-Allow-Headers",
-          "Content-Type, Authorization",
-        );
-        headers.set(
-          "Access-Control-Allow-Methods",
-          "GET, POST, PUT, PATCH, OPTIONS",
-        );
-      }
-      if (request.method === "OPTIONS")
-        return new Response(null, { status: 204, headers });
-      rateLimit(request, url.pathname);
-      const config = configuration(env);
-      // Endpoints de disponibilidade não dependem do banco e continuam
-      // informativos mesmo se o provedor estiver em manutenção.
-      if (request.method === "GET" && url.pathname === "/api/health")
-        return Response.json(
-          { status: "ok", runtime: "cloudflare-worker" },
-          { headers },
-        );
-      if (request.method === "GET" && url.pathname === "/api/config")
-        return Response.json(
-          {
-            demo: config.demo,
-            demoPlaces: config.demo ? demoPlaces : [],
-            paymentMode: config.demo ? "demo" : "mercado_pago",
-          },
-          { headers },
-        );
-      const db = await openDatabase(env);
+export function createWorker(databaseFactory = openDatabase) {
+  return {
+    /** Trata uma requisição HTTP, aplicando CORS, limites e transação da API. */
+    async fetch(request, env) {
+      const requestId = id(),
+        url = new URL(request.url),
+        headers = new Headers({
+          "Content-Type": "application/json; charset=utf-8",
+          "X-Request-Id": requestId,
+        });
+      securityHeaders(headers);
       try {
-        // Checa a rota completa Worker → Hyperdrive → PostgreSQL sem expor
-        // dados nem depender de credenciais de uma conta demonstrativa.
-        if (
-          request.method === "GET" &&
-          url.pathname === "/api/health/database"
-        ) {
-          await db.query("SELECT 1");
-          return Response.json(
-            { status: "ok", database: "connected" },
-            { headers },
+        if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
+        const origin = request.headers.get("Origin");
+        if (origin) {
+          ensure(
+            isAllowedOrigin(origin, url.origin),
+            "Origem não autorizada.",
+            403,
+          );
+          headers.set("Access-Control-Allow-Origin", origin);
+          headers.set("Vary", "Origin");
+          headers.set(
+            "Access-Control-Allow-Headers",
+            "Content-Type, Authorization",
+          );
+          headers.set(
+            "Access-Control-Allow-Methods",
+            "GET, POST, PUT, PATCH, OPTIONS",
           );
         }
-        if (config.demo) await seed(db);
-        const api = createApi(db, config),
-          body = await bodyOf(request);
-        const data = await db.transaction(() =>
-          api.handle({
-            method: request.method,
-            path: url.pathname,
-            url,
-            body,
-            authorization: request.headers.get("Authorization"),
-          }),
-        );
-        return Response.json(data, { headers });
-      } finally {
-        await db.close();
-      }
-    } catch (error) {
-      const status = error.status || (error.code === "23505" ? 409 : 500);
-      if (status === 500)
-        console.error(
-          JSON.stringify({
+        if (request.method === "OPTIONS")
+          return new Response(null, { status: 204, headers });
+        rateLimit(request, url.pathname);
+        const config = configuration(env);
+        // Endpoints de disponibilidade não dependem do banco e continuam
+        // informativos mesmo se o provedor estiver em manutenção.
+        if (request.method === "GET" && url.pathname === "/api/health")
+          return Response.json(
+            { status: "ok", runtime: "cloudflare-worker" },
+            { headers },
+          );
+        if (request.method === "GET" && url.pathname === "/api/config")
+          return Response.json(
+            {
+              demo: config.demo,
+              demoPlaces: config.demo ? demoPlaces : [],
+              paymentMode: config.demo ? "demo" : "mercado_pago",
+            },
+            { headers },
+          );
+        const db = await databaseFactory(env);
+        try {
+          // Checa a rota completa Worker → Hyperdrive → PostgreSQL sem expor
+          // dados nem depender de credenciais de uma conta demonstrativa.
+          if (
+            request.method === "GET" &&
+            url.pathname === "/api/health/database"
+          ) {
+            await db.query("SELECT 1");
+            return Response.json(
+              { status: "ok", database: "connected" },
+              { headers },
+            );
+          }
+          const api = createApi(db, config),
+            body = await bodyOf(request);
+          const data = await db.transaction(async () => {
+            if (config.demo) await seed(db);
+            return api.handle({
+              method: request.method,
+              path: url.pathname,
+              url,
+              body,
+              authorization: request.headers.get("Authorization"),
+            });
+          });
+          return Response.json(data, { headers });
+        } finally {
+          await db.close();
+        }
+      } catch (error) {
+        const status = error.status || (error.code === "23505" ? 409 : 500);
+        if (status === 500)
+          console.error(
+            JSON.stringify({
+              requestId,
+              message: "Falha interna",
+              code: error.code || error.name,
+            }),
+          );
+        return Response.json(
+          {
+            error:
+              status === 500
+                ? "Não foi possível concluir. Tente novamente."
+                : error.code === "23505"
+                  ? "Este cadastro ou horário já foi reservado. Atualize e tente novamente."
+                  : error.message,
             requestId,
-            message: "Falha interna",
-            code: error.code || error.name,
-          }),
+          },
+          { status, headers },
         );
-      return Response.json(
-        {
-          error:
-            status === 500
-              ? "Não foi possível concluir. Tente novamente."
-              : error.message,
-          requestId,
-        },
-        { status, headers },
-      );
-    }
-  },
-};
+      }
+    },
+  };
+}
+export default createWorker();

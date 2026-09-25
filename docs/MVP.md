@@ -1,5 +1,7 @@
 # LevaAí — MVP
 
+> Documento da versão anterior. Para executar e publicar a versão atual, use [ENTREGA-MVP.md](ENTREGA-MVP.md). Os comandos abaixo que citam SQLite e o schema antigo não se aplicam à API atual.
+
 Implementação em Flutter Web + Cloudflare Worker, com PostgreSQL mantido no Supabase. O fluxo principal está conectado à API; as telas antigas de catálogo permanecem no repositório, mas não são o ponto de entrada.
 
 ## Executar

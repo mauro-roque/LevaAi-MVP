@@ -6,20 +6,26 @@ import 'ui.dart';
 class VehiclesPage extends StatefulWidget {
   final Api api;
   final Json config;
+
+  /// Recebe a sessão do prestador e a configuração de veículos do Worker.
   const VehiclesPage({super.key, required this.api, required this.config});
   @override
   State<VehiclesPage> createState() => _VehiclesPageState();
 }
 
+/// Carrega a frota e abre o editor de inclusão ou alteração de veículos.
 class _VehiclesPageState extends State<VehiclesPage> {
   List<dynamic>? vehicles;
   String? error;
+  bool updating = false;
   @override
+  /// Consulta a frota cadastrada ao abrir a página.
   void initState() {
     super.initState();
     load();
   }
 
+  /// Atualiza a lista de veículos do prestador autenticado.
   Future<void> load() async {
     try {
       final rows = await widget.api.call('/vehicles');
@@ -34,6 +40,7 @@ class _VehiclesPageState extends State<VehiclesPage> {
     }
   }
 
+  /// Abre o editor para criar ou alterar um veículo e atualiza a lista ao salvar.
   Future<void> edit([Json? vehicle]) async {
     final saved = await showDialog<bool>(
       context: context,
@@ -48,7 +55,42 @@ class _VehiclesPageState extends State<VehiclesPage> {
     if (saved == true) await load();
   }
 
+  /// Altera apenas a disponibilidade, preservando preços e reservas já feitas.
+  Future<void> toggleAvailability(Json vehicle) async {
+    if (updating) return;
+    setState(() {
+      updating = true;
+      error = null;
+    });
+    try {
+      final updated = await widget.api.call(
+        '/vehicles/${vehicle['id']}/availability',
+        method: 'PATCH',
+        body: {'active': !vehicleIsActive(vehicle)},
+      );
+      if (!mounted) return;
+      setState(() {
+        final index = vehicles!.indexWhere((v) => v['id'] == vehicle['id']);
+        if (index >= 0) vehicles![index] = updated;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            vehicleIsActive(updated)
+                ? 'Veículo ativado para novas buscas.'
+                : 'Veículo pausado. Seus serviços já contratados continuam.',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) setState(() => error = '$e');
+    } finally {
+      if (mounted) setState(() => updating = false);
+    }
+  }
+
   @override
+  /// Exibe estados de carregamento, erro, vazio e os cartões da frota.
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -58,7 +100,7 @@ class _VehiclesPageState extends State<VehiclesPage> {
         'Cadastre veículos, valores e ajudantes para receber solicitações.',
       ),
       FilledButton.icon(
-        onPressed: edit,
+        onPressed: updating ? null : edit,
         icon: const Icon(Icons.add),
         label: const Text('Cadastrar veículo'),
       ),
@@ -101,7 +143,10 @@ class _VehiclesPageState extends State<VehiclesPage> {
                     ),
                     IconButton(
                       tooltip: 'Editar veículo',
-                      onPressed: () => edit(Map<String, dynamic>.from(v)),
+                      onPressed:
+                          updating
+                              ? null
+                              : () => edit(Map<String, dynamic>.from(v)),
                       icon: const Icon(Icons.edit_outlined, size: 20),
                     ),
                   ],
@@ -111,7 +156,7 @@ class _VehiclesPageState extends State<VehiclesPage> {
                   spacing: 20,
                   runSpacing: 10,
                   children: [
-                    Text(v['data']['type']),
+                    Text(vehicleTypeLabel(v['data']['type'])),
                     Text(
                       '${decimal(v['data']['capacityKg'])} kg / ${decimal(v['data']['volumeM3'])} m³',
                     ),
@@ -122,7 +167,7 @@ class _VehiclesPageState extends State<VehiclesPage> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    Text(v['active'] == 1 ? 'Ativo' : 'Inativo'),
+                    Text(vehicleIsActive(v) ? 'Ativo' : 'Pausado'),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -132,8 +177,24 @@ class _VehiclesPageState extends State<VehiclesPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Base: ${v['data']['base']['label']} • raio de ${decimal(v['data']['radiusKm'])} km',
+                  'Base: ${v['data']['base']?['label'] ?? 'Edite para definir o endereço'} • raio de ${decimal(v['data']['radiusKm'])} km',
                   style: const TextStyle(fontSize: 12, color: muted),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed:
+                      updating
+                          ? null
+                          : () =>
+                              toggleAvailability(Map<String, dynamic>.from(v)),
+                  icon: Icon(
+                    vehicleIsActive(v)
+                        ? Icons.pause_circle_outline
+                        : Icons.play_circle_outline,
+                  ),
+                  label: Text(
+                    vehicleIsActive(v) ? 'Pausar veículo' : 'Ativar veículo',
+                  ),
                 ),
               ],
             ),
@@ -148,6 +209,8 @@ class VehicleEditor extends StatefulWidget {
   final Api api;
   final Json config;
   final Json? vehicle;
+
+  /// Recebe o veículo opcional que define se o diálogo cria ou atualiza um registro.
   const VehicleEditor({
     super.key,
     required this.api,
@@ -158,15 +221,17 @@ class VehicleEditor extends StatefulWidget {
   State<VehicleEditor> createState() => _VehicleEditorState();
 }
 
+/// Mantém os campos e validações do diálogo de veículo.
 class _VehicleEditorState extends State<VehicleEditor> {
   final form = GlobalKey<FormState>();
   late final Map<String, TextEditingController> fields;
   Json? base;
-  String type = 'Utilitário';
+  String type = 'utilitario';
   int helpers = 0;
   bool active = true, saving = false;
   String? error;
   @override
+  /// Inicializa os campos com valores do veículo existente ou valores iniciais.
   void initState() {
     super.initState();
     final d = widget.vehicle?['data'];
@@ -185,10 +250,11 @@ class _VehicleEditorState extends State<VehicleEditor> {
     base = d?['base'];
     type = d?['type'] ?? type;
     helpers = d?['helpers'] ?? 0;
-    active = widget.vehicle == null || widget.vehicle!['active'] == 1;
+    active = widget.vehicle == null || vehicleIsActive(widget.vehicle!);
   }
 
   @override
+  /// Libera todos os controladores mantidos no mapa de campos.
   void dispose() {
     for (final c in fields.values) {
       c.dispose();
@@ -196,8 +262,11 @@ class _VehicleEditorState extends State<VehicleEditor> {
     super.dispose();
   }
 
+  /// Converte um campo numérico usando vírgula ou ponto como separador decimal.
   double value(String key) =>
       double.parse(fields[key]!.text.replaceAll(',', '.'));
+
+  /// Valida o formulário e envia inclusão ou alteração para a API.
   Future<void> save() async {
     if (saving || !form.currentState!.validate()) return;
     if (base == null) {
@@ -236,6 +305,7 @@ class _VehicleEditorState extends State<VehicleEditor> {
     }
   }
 
+  /// Cria um campo do formulário com a validação adequada ao seu tipo.
   Widget field(String key, String label, {bool numeric = true}) => Padding(
     padding: const EdgeInsets.only(bottom: 16),
     child: TextFormField(
@@ -254,6 +324,7 @@ class _VehicleEditorState extends State<VehicleEditor> {
     ),
   );
   @override
+  /// Constrói o diálogo responsivo para edição da frota.
   Widget build(BuildContext context) => AlertDialog(
     title: Text(widget.vehicle == null ? 'Novo veículo' : 'Editar veículo'),
     content: SizedBox(
@@ -276,15 +347,21 @@ class _VehicleEditorState extends State<VehicleEditor> {
                   ),
                   items:
                       [
-                            'Motocicleta',
-                            'Utilitário',
-                            'Van',
-                            'Caminhão 3/4',
-                            'VUC',
-                            'Outros',
+                            'motocicleta',
+                            'utilitario',
+                            'fiorino',
+                            'saveiro',
+                            'strada',
+                            'van',
+                            'caminhao_3_4',
+                            'vuc',
+                            'outros',
                           ]
                           .map(
-                            (s) => DropdownMenuItem(value: s, child: Text(s)),
+                            (s) => DropdownMenuItem(
+                              value: s,
+                              child: Text(vehicleTypeLabel(s)),
+                            ),
                           )
                           .toList(),
                   onChanged: (v) => setState(() => type = v!),

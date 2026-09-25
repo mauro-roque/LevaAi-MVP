@@ -20,6 +20,7 @@ export function createMaps(config) {
   const cache = new Map();
   let lastCall = 0,
     queue = Promise.resolve();
+  /** Faz uma chamada ao provedor de mapas com prazo e mensagem segura. */
   async function get(url) {
     try {
       const response = await fetch(url, {
@@ -39,6 +40,7 @@ export function createMaps(config) {
     }
   }
   return {
+    /** Pesquisa endereços, respeitando limite do Nominatim e cache local. */
     async search(query) {
       const key = query.toLowerCase();
       if (cache.has(key)) return cache.get(key);
@@ -67,6 +69,7 @@ export function createMaps(config) {
       queue = operation.catch(() => {});
       return operation;
     },
+    /** Calcula uma rota de carro ou devolve a rota controlada do modo demo. */
     async route(origin, destination, demo) {
       ensure(
         distance(origin, destination) > 0.05,

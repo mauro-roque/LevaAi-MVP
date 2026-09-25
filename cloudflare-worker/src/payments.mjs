@@ -1,6 +1,7 @@
 import { AppError, ensure } from "./validation.mjs";
 /** Centraliza a criação de preferências de pagamento e o modo demonstrativo. */
 export function createPayments(config) {
+  /** Chama o Mercado Pago e padroniza falhas transitórias do gateway. */
   async function gateway(path, options = {}) {
     ensure(
       config.mpToken,
@@ -32,6 +33,7 @@ export function createPayments(config) {
     return response.json();
   }
   return {
+    /** Cria a cobrança Pix após o aceite do prestador. */
     async create(booking, user) {
       if (config.demo)
         return {
@@ -63,6 +65,7 @@ export function createPayments(config) {
         demo: false,
       };
     },
+    /** Consulta e valida o estado de uma cobrança contra a solicitação. */
     async check(payment, booking) {
       if (payment.gateway === "demo") return payment.status;
       const result = await gateway(`/${payment.external_id}`);

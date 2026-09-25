@@ -25,7 +25,9 @@ const activeStatuses = [
   "a_caminho",
   "em_andamento",
 ];
+/** Devolve o instante atual serializado para campos de auditoria do banco. */
 const now = () => new Date().toISOString();
+/** Converte a coluna JSON antiga da API legada em objeto JavaScript. */
 const decoded = (row) =>
   row
     ? {
@@ -49,6 +51,8 @@ export function configuration(env) {
     nominatimUrl: env.NOMINATIM_URL || "https://nominatim.openstreetmap.org",
     osrmUrl: env.OSRM_URL || "https://router.project-osrm.org",
     mpToken: env.MERCADO_PAGO_ACCESS_TOKEN,
+    resendToken: env.RESEND_API_KEY,
+    mailFrom: env.MAIL_FROM,
   };
 }
 
@@ -60,67 +64,59 @@ export async function seed(db) {
   if ((await db.query("SELECT id FROM users LIMIT 1")).length) return;
   const password = await hashPassword("LevaAi@123");
   for (const user of [
-      ["demo-cliente", "Mariana Silva", "cliente@levaai.demo", "cliente"],
-      [
-        "demo-prestador",
-        "Carlos Transportes",
-        "prestador@levaai.demo",
-        "prestador",
-      ],
-      [
-        "demo-prestador-2",
-        "Mudanças Horizonte",
-        "horizonte@levaai.demo",
-        "prestador",
-      ],
+    ["demo-cliente", "Mariana Silva", "cliente@levaai.demo", "cliente"],
+    [
+      "demo-prestador",
+      "Carlos Transportes",
+      "prestador@levaai.demo",
+      "prestador",
+    ],
+    [
+      "demo-prestador-2",
+      "Mudanças Horizonte",
+      "horizonte@levaai.demo",
+      "prestador",
+    ],
   ]) {
     await db.query(
       "INSERT INTO users(id,name,email,password_hash,role,phone,created_at) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (id) DO NOTHING",
-      [
-        user[0],
-        user[1],
-        user[2],
-        password,
-        user[3],
-        "(11) 99999-0000",
-        now(),
-      ],
+      [user[0], user[1], user[2], password, user[3], "(11) 99999-0000", now()],
     );
   }
   for (const vehicle of [
-      [
-        "demo-van",
-        "demo-prestador",
-        "Fiat Ducato",
-        "Van",
-        1500,
-        12,
-        450,
-        2,
-        8000,
-      ],
-      [
-        "demo-fiorino",
-        "demo-prestador",
-        "Fiat Fiorino",
-        "Utilitário",
-        650,
-        3.3,
-        350,
-        1,
-        7000,
-      ],
-      [
-        "demo-truck",
-        "demo-prestador-2",
-        "Mercedes-Benz Accelo",
-        "Caminhão 3/4",
-        3000,
-        24,
-        650,
-        3,
-        9000,
-      ],
+    [
+      "demo-van",
+      "demo-prestador",
+      "Fiat Ducato",
+      "Van",
+      1500,
+      12,
+      450,
+      2,
+      8000,
+    ],
+    [
+      "demo-fiorino",
+      "demo-prestador",
+      "Fiat Fiorino",
+      "Utilitário",
+      650,
+      3.3,
+      350,
+      1,
+      7000,
+    ],
+    [
+      "demo-truck",
+      "demo-prestador-2",
+      "Mercedes-Benz Accelo",
+      "Caminhão 3/4",
+      3000,
+      24,
+      650,
+      3,
+      9000,
+    ],
   ]) {
     const data = {
       model: vehicle[2],
@@ -145,7 +141,9 @@ export async function seed(db) {
 export function createApi(db, config) {
   const maps = createMaps(config),
     payments = createPayments(config);
+  /** Retorna somente a primeira linha de uma consulta SQL. */
   const one = async (sql, values = []) => (await db.query(sql, values))[0];
+  /** Valida a sessão e carrega o usuário correspondente na estrutura legada. */
   async function currentUser(authorization) {
     const claims = await verifyToken(
       (authorization || "").replace(/^Bearer /, ""),
@@ -165,12 +163,14 @@ export function createApi(db, config) {
     ensure(user, "Conta não encontrada.", 401);
     return { ...user, sessionId: claims.jti };
   }
+  /** Exige que a operação seja executada pelo perfil informado. */
   const role = (user, expected) =>
     ensure(
       user.role === expected,
       "Seu perfil não pode realizar esta ação.",
       403,
     );
+  /** Cria uma sessão persistida e assina o JWT para a API legada. */
   async function session(user) {
     const sessionId = id();
     await db.query(
@@ -182,6 +182,7 @@ export function createApi(db, config) {
       token: await signToken(user, config.secret, sessionId),
     };
   }
+  /** Carrega uma reserva e garante que ela pertence ao cliente ou prestador. */
   async function bookingFor(user, bookingId) {
     const booking = decoded(
       await one("SELECT * FROM bookings WHERE id=$1", [bookingId]),
@@ -193,6 +194,7 @@ export function createApi(db, config) {
     );
     return booking;
   }
+  /** Atualiza o status de uma reserva e registra a transição no histórico. */
   async function change(booking, status, user) {
     await db.query("UPDATE bookings SET status=$1 WHERE id=$2", [
       status,
@@ -204,6 +206,7 @@ export function createApi(db, config) {
     );
     booking.status = status;
   }
+  /** Testa se o veículo legadado atende carga, equipe, raio e agenda. */
   async function compatible(vehicle, input) {
     const provider = await one("SELECT * FROM users WHERE id=$1", [
         vehicle.provider_id,
@@ -224,6 +227,7 @@ export function createApi(db, config) {
     );
     return !rows.some((row) => activeStatuses.includes(row.status));
   }
+  /** Agrega pagamento, avaliação, histórico e contatos da reserva legada. */
   async function details(booking) {
     const payment = decoded(
       await one("SELECT * FROM payments WHERE booking_id=$1", [booking.id]),
@@ -252,6 +256,7 @@ export function createApi(db, config) {
   }
 
   return {
+    /** Encaminha as rotas mantidas para compatibilidade com a versão anterior. */
     async handle({ method, path, url, body, authorization }) {
       if (method === "GET" && path === "/api/config")
         return {

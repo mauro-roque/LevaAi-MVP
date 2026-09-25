@@ -2,11 +2,13 @@ import { AppError, ensure } from "./validation.mjs";
 
 /** Utilitários de autenticação compatíveis com o Web Crypto do Cloudflare. */
 const encoder = new TextEncoder();
+/** Codifica bytes no formato Base64URL usado pelos tokens. */
 const toBase64 = (value) =>
   btoa(String.fromCharCode(...new Uint8Array(value)))
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/, "");
+/** Decodifica Base64URL em bytes para validações criptográficas. */
 const fromBase64 = (value) =>
   Uint8Array.from(
     atob(
@@ -18,6 +20,7 @@ const fromBase64 = (value) =>
     (char) => char.charCodeAt(0),
   );
 // Workers aceita no máximo 100 mil iterações no PBKDF2 via Web Crypto.
+/** Deriva bytes de senha com PBKDF2 e o sal informado. */
 async function derive(password, salt, iterations = 100000) {
   const source = await crypto.subtle.importKey(
     "raw",
@@ -34,6 +37,7 @@ async function derive(password, salt, iterations = 100000) {
     ),
   );
 }
+/** Compara dois vetores sem encerrar cedo, reduzindo vazamento por tempo. */
 function safeEqual(a, b) {
   if (a.length !== b.length) return false;
   let result = 0;
@@ -60,6 +64,7 @@ export async function verifyPassword(password, stored) {
     return false;
   }
 }
+/** Assina a parte pública de um JWT com HMAC SHA-256. */
 async function sign(unsigned, secret) {
   const key = await crypto.subtle.importKey(
     "raw",

@@ -5,10 +5,35 @@ const blue = Color(0xFF2156E8);
 const ink = Color(0xFF192840);
 const muted = Color(0xFF728097);
 const background = Color(0xFFF5F7FB);
+
+/// Aceita os indicadores booleano e numérico usados nas versões da API.
+bool vehicleIsActive(Json vehicle) =>
+    vehicle['active'] == true || vehicle['active'] == 1;
+
+/// Traduz os tipos do banco para os nomes exibidos ao cliente e prestador.
+String vehicleTypeLabel(String type) =>
+    const {
+      'motocicleta': 'Motocicleta',
+      'utilitario': 'Utilitário',
+      'fiorino': 'Fiorino',
+      'saveiro': 'Saveiro',
+      'strada': 'Strada',
+      'van': 'Van',
+      'caminhao_3_4': 'Caminhão 3/4',
+      'vuc': 'VUC',
+      'outros': 'Outros',
+    }[type] ??
+    type;
+
+/// Formata um valor em centavos como moeda brasileira.
 String money(num cents) =>
     'R\$ ${(cents / 100).toStringAsFixed(2).replaceAll('.', ',')}';
+
+/// Formata números de peso, volume e distância no padrão brasileiro.
 String decimal(num n) =>
     n.toStringAsFixed(n % 1 == 0 ? 0 : 1).replaceAll('.', ',');
+
+/// Transforma uma data ISO no formato curto usado pela interface.
 String dateLabel(String date) => date.split('-').reversed.join('/');
 const statusNames = {
   'aguardando_prestador': 'Aguardando prestador',
@@ -19,6 +44,7 @@ const statusNames = {
   'concluido': 'Concluído',
   'avaliado': 'Avaliado',
   'cancelado_cliente': 'Cancelado',
+  'cancelado_prestador': 'Cancelado pelo prestador',
   'recusado_prestador': 'Recusado pelo prestador',
   'pagamento_recusado': 'Pagamento recusado',
 };
@@ -94,12 +120,15 @@ ThemeData appTheme() => ThemeData(
 class Panel extends StatelessWidget {
   final Widget child;
   final EdgeInsets padding;
+
+  /// Recebe o conteúdo e permite ajustar o espaçamento interno quando necessário.
   const Panel({
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(24),
   });
   @override
+  /// Aplica a aparência padronizada de cartão ao conteúdo filho.
   Widget build(BuildContext context) => Container(
     padding: padding,
     decoration: BoxDecoration(
@@ -114,8 +143,11 @@ class Panel extends StatelessWidget {
 /// Assinatura visual do LevaAí, reutilizada em cabeçalhos e telas de acesso.
 class Brand extends StatelessWidget {
   final bool light;
+
+  /// Alterna a cor para uso sobre fundos claros ou escuros.
   const Brand({super.key, this.light = false});
   @override
+  /// Monta a marca visual usada nos cabeçalhos do aplicativo.
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
@@ -148,8 +180,11 @@ class Brand extends StatelessWidget {
 /// Etiqueta que transforma o status técnico da reserva em um texto visível.
 class StatusBadge extends StatelessWidget {
   final String status;
+
+  /// Recebe o status técnico que será traduzido para uma etiqueta amigável.
   const StatusBadge(this.status, {super.key});
   @override
+  /// Escolhe a cor e o texto corretos para o status atual.
   Widget build(BuildContext context) {
     final done = ['concluido', 'avaliado', 'agendado'].contains(status);
     final negative =
@@ -182,8 +217,11 @@ class StatusBadge extends StatelessWidget {
 class Notice extends StatelessWidget {
   final String message;
   final bool error;
+
+  /// Exibe uma mensagem com estilo de orientação ou erro.
   const Notice(this.message, {super.key, this.error = false});
   @override
+  /// Renderiza a caixa de aviso compartilhada entre as telas.
   Widget build(BuildContext context) => Container(
     margin: const EdgeInsets.symmetric(vertical: 10),
     padding: const EdgeInsets.all(14),
@@ -220,6 +258,8 @@ class AddressField extends StatefulWidget {
   final String label;
   final Json? value;
   final ValueChanged<Json?> onChanged;
+
+  /// Recebe a seleção atual e comunica à tela pai quando o endereço muda.
   const AddressField({
     super.key,
     required this.api,
@@ -231,18 +271,21 @@ class AddressField extends StatefulWidget {
   State<AddressField> createState() => _AddressFieldState();
 }
 
+/// Controla busca, resultados e sincronização do campo de endereço.
 class _AddressFieldState extends State<AddressField> {
   late final TextEditingController controller;
   List<dynamic> results = [];
   bool loading = false;
   String? error;
   @override
+  /// Inicializa o texto exibido a partir do ponto já selecionado.
   void initState() {
     super.initState();
     controller = TextEditingController(text: widget.value?['label'] ?? '');
   }
 
   @override
+  /// Sincroniza o texto quando a tela pai troca o endereço selecionado.
   void didUpdateWidget(covariant AddressField oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.value != null && widget.value != oldWidget.value) {
@@ -252,11 +295,13 @@ class _AddressFieldState extends State<AddressField> {
   }
 
   @override
+  /// Libera o controlador usado exclusivamente pelo campo de endereço.
   void dispose() {
     controller.dispose();
     super.dispose();
   }
 
+  /// Consulta a busca de endereços e apresenta as opções geocodificadas.
   Future<void> search() async {
     if (loading) return;
     if (controller.text.trim().length < 4) {
@@ -290,6 +335,7 @@ class _AddressFieldState extends State<AddressField> {
   }
 
   @override
+  /// Monta entrada, botão de busca e lista de resultados selecionáveis.
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -364,6 +410,7 @@ class _AddressFieldState extends State<AddressField> {
   );
 }
 
+/// Cria o título e o texto de apoio padrão das seções de uma página.
 Widget sectionTitle(BuildContext context, String title, String subtitle) =>
     Padding(
       padding: const EdgeInsets.only(bottom: 24),

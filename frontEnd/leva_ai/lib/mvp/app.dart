@@ -4,33 +4,55 @@ import 'ui.dart';
 import 'request_page.dart';
 import 'bookings_page.dart';
 import 'vehicles_page.dart';
+import 'storage.dart';
+import 'onboarding.dart';
+import 'profile_page.dart';
+import 'recovery_page.dart';
 
 /// Raiz do fluxo principal do MVP: sessão, navegação e carregamento inicial.
 class LevaAiMvp extends StatefulWidget {
   final Api? api;
+
+  /// Permite injetar a API em testes e usa a implementação padrão no aplicativo.
   const LevaAiMvp({super.key, this.api});
   @override
   State<LevaAiMvp> createState() => _LevaAiMvpState();
 }
 
+/// Coordena sessão, onboarding e navegação principal do aplicativo.
 class _LevaAiMvpState extends State<LevaAiMvp> {
   late final Api api = widget.api ?? Api();
   Json? config, user;
   Object? error;
   int page = 0, revision = 0;
+  bool introduced = readLocal('levaai.introduced') == 'yes';
 
+  /// Indica se a indisponibilidade atual é apenas a inicialização do serviço.
   bool get serviceStarting =>
       error is ApiException && (error as ApiException).status == 503;
   @override
+  /// Inicia o carregamento da configuração e valida a sessão da aba.
   void initState() {
     super.initState();
     load();
   }
 
+  /// Carrega o modo do Worker e restaura o usuário autenticado quando possível.
   Future<void> load() async {
     setState(() => error = null);
     try {
       final result = await api.call('/config');
+      if (api.token != null) {
+        try {
+          user = await api.call('/me');
+        } catch (e) {
+          if (e is ApiException && e.status == 401) {
+            api.token = null;
+          } else {
+            rethrow;
+          }
+        }
+      }
       if (mounted) setState(() => config = result);
     } catch (e) {
       if (mounted) setState(() => error = e);
@@ -38,12 +60,14 @@ class _LevaAiMvpState extends State<LevaAiMvp> {
   }
 
   @override
+  /// Fecha o cliente HTTP associado ao ciclo de vida da aplicação.
   void dispose() {
     api.dispose();
     super.dispose();
   }
 
   @override
+  /// Decide entre estado de carregamento, onboarding e conteúdo principal.
   Widget build(BuildContext context) => MaterialApp(
     title: 'LevaAí • Fretes e mudanças',
     debugShowCheckedModeBanner: false,
@@ -101,23 +125,38 @@ class _LevaAiMvpState extends State<LevaAiMvp> {
                 ),
               ),
             )
-            : user == null
-            ? AuthPage(
-              api: api,
-              demo: config!['demo'] == true,
-              onAuthenticated: (data) {
-                api.token = data['token'];
-                setState(() {
-                  user = data['user'];
-                  page = 0;
-                });
+            : !introduced
+            ? Onboarding(
+              onDone: () {
+                writeLocal('levaai.introduced', 'yes');
+                setState(() => introduced = true);
               },
             )
             : Builder(builder: (context) => shell(context)),
   );
 
+  /// Abre o acesso e retorna se uma sessão foi criada com sucesso.
+  Future<bool> authenticate(BuildContext context) async {
+    if (user != null) return true;
+    final data = await Navigator.of(context).push<Json>(
+      MaterialPageRoute(
+        builder:
+            (c) => AuthPage(
+              api: api,
+              demo: config!['demo'] == true,
+              onAuthenticated: (d) => Navigator.pop(c, d),
+            ),
+      ),
+    );
+    if (data == null || !mounted) return false;
+    api.token = data['token'];
+    setState(() => user = data['user']);
+    return true;
+  }
+
+  /// Monta o menu responsivo e a página adequada ao perfil do usuário.
   Widget shell(BuildContext context) {
-    final provider = user!['role'] == 'prestador';
+    final provider = user?['role'] == 'prestador';
     final nav =
         provider
             ? ['Visão geral', 'Meus veículos', 'Meus serviços', 'Meu perfil']
@@ -137,12 +176,14 @@ class _LevaAiMvpState extends State<LevaAiMvp> {
               Icons.person_outline,
             ];
     final desktop = MediaQuery.sizeOf(context).width >= 1000;
-    void select(int i) {
+    void select(int i) async {
+      if (!desktop) Navigator.pop(context);
+      if (i != 0 && user == null && !await authenticate(context)) return;
+      if (!mounted) return;
       setState(() {
         page = i;
         revision++;
       });
-      if (!desktop) Navigator.pop(context);
     }
 
     final sidebar = Container(
@@ -236,68 +277,103 @@ class _LevaAiMvpState extends State<LevaAiMvp> {
     );
     Widget content;
     if (page == 3) {
-      content = Panel(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            sectionTitle(
-              context,
-              'Meu perfil',
-              provider
-                  ? 'Você está no perfil de prestador.'
-                  : 'Você está no perfil de cliente.',
-            ),
-            Text(user!['name'], style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 8),
-            Text(user!['email']),
-            Text(user!['phone']),
-            if (provider)
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Disponível para novos fretes'),
-                value: user!['available'] == true,
-                onChanged: (value) async {
-                  try {
-                    final data = await api.call(
-                      '/me/availability',
-                      method: 'PATCH',
-                      body: {'available': value},
-                    );
-                    if (mounted) setState(() => user = data);
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text('$e')));
+      content = Column(
+        children: [
+          ProfilePage(
+            api: api,
+            user: user!,
+            onSaved: (u) => setState(() => user = u),
+          ),
+          const SizedBox(height: 20),
+          Panel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                sectionTitle(
+                  context,
+                  'Meu perfil',
+                  provider
+                      ? 'Você está no perfil de prestador.'
+                      : 'Você está no perfil de cliente.',
+                ),
+                Text(
+                  user!['name'],
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(user!['email']),
+                Text(user!['phone']),
+                if (provider)
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Disponível para novos fretes'),
+                    value: user!['available'] == true,
+                    onChanged: (value) async {
+                      try {
+                        final data = await api.call(
+                          '/me/availability',
+                          method: 'PATCH',
+                          body: {'available': value},
+                        );
+                        if (mounted) setState(() => user = data);
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text('$e')));
+                        }
+                      }
+                    },
+                  ),
+                const SizedBox(height: 20),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    try {
+                      await api.call('/auth/logout', method: 'POST');
+                    } catch (_) {
+                      /* A sessão expira em oito horas se estiver offline. */
                     }
-                  }
-                },
-              ),
-            const SizedBox(height: 20),
-            OutlinedButton.icon(
-              onPressed: () async {
-                try {
-                  await api.call('/auth/logout', method: 'POST');
-                } catch (_) {
-                  /* A sessão expira em oito horas se estiver offline. */
-                }
-                api.token = null;
-                if (mounted) setState(() => user = null);
-              },
-              icon: const Icon(Icons.logout),
-              label: const Text('Sair da conta'),
+                    api.token = null;
+                    if (mounted) {
+                      setState(() {
+                        user = null;
+                        page = 0;
+                        api.draft = null;
+                      });
+                    }
+                  },
+                  icon: const Icon(Icons.logout),
+                  label: const Text('Sair da conta'),
+                ),
+                if (config!['demo'] == true)
+                  const Notice(
+                    'Para testar os dois lados do serviço, saia e entre com a conta de demonstração do outro perfil. Os pedidos ficam salvos.',
+                  ),
+              ],
             ),
-            if (config!['demo'] == true)
-              const Notice(
-                'Para testar os dois lados do serviço, saia e entre com a conta de demonstração do outro perfil. Os pedidos ficam salvos.',
-              ),
-          ],
-        ),
+          ),
+        ],
       );
     } else if (!provider && page == 0) {
       content = RequestPage(
         api: api,
         config: config!,
+        requireAuthentication: () async {
+          if (!await authenticate(context)) return false;
+          if (user?['role'] != 'cliente') {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Entre com um perfil de cliente para contratar.',
+                  ),
+                ),
+              );
+            }
+            return false;
+          }
+          return true;
+        },
         onBooked:
             () => setState(() {
               page = 1;
@@ -368,20 +444,26 @@ class _LevaAiMvpState extends State<LevaAiMvp> {
                           ),
                         ),
                       const SizedBox(width: 16),
-                      CircleAvatar(
-                        radius: 19,
-                        backgroundColor: const Color(0xFFEAF0FF),
-                        child: Text(
-                          (user!['name'] as String)
-                              .substring(0, 1)
-                              .toUpperCase(),
-                          style: const TextStyle(
-                            color: blue,
-                            fontWeight: FontWeight.w700,
+                      if (user == null)
+                        TextButton(
+                          onPressed: () => authenticate(context),
+                          child: const Text('Entrar'),
+                        ),
+                      if (user != null)
+                        CircleAvatar(
+                          radius: 19,
+                          backgroundColor: const Color(0xFFEAF0FF),
+                          child: Text(
+                            (user!['name'] as String)
+                                .substring(0, 1)
+                                .toUpperCase(),
+                            style: const TextStyle(
+                              color: blue,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
-                      ),
-                      if (desktop) ...[
+                      if (desktop && user != null) ...[
                         const SizedBox(width: 10),
                         Text(
                           user!['name'],
@@ -416,6 +498,8 @@ class AuthPage extends StatefulWidget {
   final Api api;
   final bool demo;
   final ValueChanged<Json> onAuthenticated;
+
+  /// Recebe as dependências e a ação chamada após o login ou cadastro.
   const AuthPage({
     super.key,
     required this.api,
@@ -426,6 +510,7 @@ class AuthPage extends StatefulWidget {
   State<AuthPage> createState() => _AuthPageState();
 }
 
+/// Mantém os campos, o perfil e os estados de envio da tela de acesso.
 class _AuthPageState extends State<AuthPage> {
   final email = TextEditingController(),
       password = TextEditingController(),
@@ -436,6 +521,7 @@ class _AuthPageState extends State<AuthPage> {
   String role = 'cliente';
   String? error;
   @override
+  /// Libera todos os controladores de texto criados pelo formulário.
   void dispose() {
     for (final c in [email, password, name, phone]) {
       c.dispose();
@@ -443,6 +529,7 @@ class _AuthPageState extends State<AuthPage> {
     super.dispose();
   }
 
+  /// Valida e envia login ou cadastro, devolvendo a sessão ao fluxo anterior.
   Future<void> submit() async {
     if (loading || !form.currentState!.validate()) return;
     setState(() {
@@ -469,6 +556,7 @@ class _AuthPageState extends State<AuthPage> {
     }
   }
 
+  /// Preenche e envia uma conta de demonstração para a apresentação do MVP.
   void demo(String profile) {
     setState(() {
       register = false;
@@ -481,9 +569,14 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   @override
+  /// Renderiza o formulário de login ou cadastro conforme a aba selecionada.
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width > 900;
     return Scaffold(
+      appBar: AppBar(
+        leading: BackButton(onPressed: () => Navigator.maybePop(context)),
+        title: const Text('Sua conta'),
+      ),
       body: Row(
         children: [
           if (wide)
@@ -573,7 +666,7 @@ class _AuthPageState extends State<AuthPage> {
                         Text(
                           register
                               ? 'Crie sua conta e escolha como quer usar o LevaAí.'
-                              : 'Entre para encontrar seu próximo frete.',
+                              : 'Entre para continuar. Sua busca está salva.',
                           style: const TextStyle(color: muted),
                         ),
                         const SizedBox(height: 30),
@@ -659,6 +752,20 @@ class _AuthPageState extends State<AuthPage> {
                                       : null,
                         ),
                         if (error != null) Notice(error!, error: true),
+                        if (!register)
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed:
+                                  () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder:
+                                          (_) => RecoveryPage(api: widget.api),
+                                    ),
+                                  ),
+                              child: const Text('Esqueci minha senha'),
+                            ),
+                          ),
                         const SizedBox(height: 24),
                         FilledButton(
                           onPressed: loading ? null : submit,
@@ -738,8 +845,10 @@ class _AuthPageState extends State<AuthPage> {
   }
 }
 
+/// Desenha a ilustração estática de caminhão do painel de autenticação.
 class _TruckPainter extends CustomPainter {
   @override
+  /// Renderiza as formas do caminhão na área entregue pelo Flutter.
   void paint(Canvas canvas, Size size) {
     final p = Paint()..color = Colors.white.withValues(alpha: .12);
     canvas.drawRRect(
@@ -789,5 +898,6 @@ class _TruckPainter extends CustomPainter {
   }
 
   @override
+  /// Evita repintura porque a ilustração não depende de estado.
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

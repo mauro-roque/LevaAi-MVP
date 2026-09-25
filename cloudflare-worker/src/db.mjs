@@ -21,9 +21,11 @@ export async function openDatabase(env) {
     throw new AppError("Não foi possível acessar o banco de dados.", 503);
   }
   return {
+    /** Executa SQL parametrizado e retorna apenas as linhas do resultado. */
     async query(sql, params = []) {
       return (await client.query(sql, params)).rows;
     },
+    /** Executa a operação de negócio de forma atômica com rollback em falha. */
     async transaction(work) {
       await client.query("BEGIN");
       try {
