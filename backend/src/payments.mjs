@@ -1,6 +1,7 @@
 import { AppError, ensure } from "./validation.mjs";
 /** Isola a integração de pagamentos e o retorno demonstrativo. */
 export function createPayments(config) {
+  /** Chama o Mercado Pago com idempotência e converte indisponibilidade em erro seguro. */
   async function gateway(path, options = {}) {
     ensure(
       config.mpToken,
@@ -32,6 +33,7 @@ export function createPayments(config) {
     return response.json();
   }
   return {
+    /** Cria uma cobrança Pix correspondente a uma contratação confirmada. */
     async create(booking, user) {
       if (config.demo)
         return {
@@ -63,6 +65,7 @@ export function createPayments(config) {
         demo: false,
       };
     },
+    /** Confere o status remoto e valida se ele pertence à contratação consultada. */
     async check(payment, booking) {
       if (payment.gateway === "demo") return payment.status;
       const result = await gateway(`/${payment.external_id}`);

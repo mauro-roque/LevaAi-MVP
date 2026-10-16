@@ -6,6 +6,7 @@ import {
   randomUUID,
 } from "node:crypto";
 import { promisify } from "node:util";
+/** Adapta a derivação assíncrona de senha do Node para uso com await. */
 const derive = promisify(scrypt);
 /** Gera um hash de senha adequado para armazenamento no backend local. */
 export async function hashPassword(password) {
@@ -61,7 +62,9 @@ export function verifyToken(token, secret) {
     return null;
   }
 }
+/** Gera identificadores aleatórios para entidades persistidas. */
 export const id = () => randomUUID();
+/** Remove informações internas antes de devolver o perfil ao aplicativo. */
 export const publicUser = ({ id, name, email, role, phone, available }) => ({
   id,
   name,

@@ -20,6 +20,7 @@ export function createMaps(config) {
   const cache = new Map();
   let lastCall = 0,
     queue = Promise.resolve();
+  /** Executa uma chamada externa de mapas com prazo e erro seguro. */
   async function get(url) {
     try {
       const response = await fetch(url, {
@@ -39,6 +40,7 @@ export function createMaps(config) {
     }
   }
   return {
+    /** Pesquisa endereços no Brasil, respeitando o limite do provedor. */
     async search(query) {
       const key = query.toLowerCase();
       if (cache.has(key)) return cache.get(key);
@@ -67,6 +69,7 @@ export function createMaps(config) {
       queue = operation.catch(() => {});
       return operation;
     },
+    /** Calcula a rota rodoviária ou a rota previsível de demonstração. */
     async route(origin, destination, demo) {
       ensure(
         distance(origin, destination) > 0.05,
