@@ -21,6 +21,7 @@ const fromBase64 = (value) =>
   );
 // Workers aceita no máximo 100 mil iterações no PBKDF2 via Web Crypto.
 /** Deriva bytes de senha com PBKDF2 e o sal informado. */
+/** Deriva uma chave de senha usando os parâmetros compatíveis com Workers. */
 async function derive(password, salt, iterations = 100000) {
   const source = await crypto.subtle.importKey(
     "raw",
@@ -38,6 +39,7 @@ async function derive(password, salt, iterations = 100000) {
   );
 }
 /** Compara dois vetores sem encerrar cedo, reduzindo vazamento por tempo. */
+/** Compara vetores sem encerrar antes, evitando vazamento por tempo. */
 function safeEqual(a, b) {
   if (a.length !== b.length) return false;
   let result = 0;
@@ -65,6 +67,7 @@ export async function verifyPassword(password, stored) {
   }
 }
 /** Assina a parte pública de um JWT com HMAC SHA-256. */
+/** Produz a assinatura HMAC de uma parte serializada do token. */
 async function sign(unsigned, secret) {
   const key = await crypto.subtle.importKey(
     "raw",

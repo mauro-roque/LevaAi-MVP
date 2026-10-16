@@ -518,7 +518,10 @@ class _AuthPageState extends State<AuthPage> {
       phone = TextEditingController(),
       verificationCode = TextEditingController();
   final form = GlobalKey<FormState>();
-  bool register = false, loading = false, hidden = true, pendingVerification = false;
+  bool register = false,
+      loading = false,
+      hidden = true,
+      pendingVerification = false;
   String role = 'cliente';
   String? error;
   @override
@@ -539,17 +542,20 @@ class _AuthPageState extends State<AuthPage> {
     });
     try {
       final result = await widget.api.call(
-        pendingVerification ? '/auth/verify-email' : '/auth/${register ? 'register' : 'login'}',
+        pendingVerification
+            ? '/auth/verify-email'
+            : '/auth/${register ? 'register' : 'login'}',
         method: 'POST',
-        body: pendingVerification
-            ? {'code': verificationCode.text.trim()}
-            : {
-                'email': email.text.trim(),
-                'password': password.text,
-                'name': name.text.trim(),
-                'phone': phone.text.trim(),
-                'role': role,
-              },
+        body:
+            pendingVerification
+                ? {'code': verificationCode.text.trim()}
+                : {
+                  'email': email.text.trim(),
+                  'password': password.text,
+                  'name': name.text.trim(),
+                  'phone': phone.text.trim(),
+                  'role': role,
+                },
       );
       if (mounted && result['pendingVerification'] == true) {
         setState(() => pendingVerification = true);
@@ -695,9 +701,11 @@ class _AuthPageState extends State<AuthPage> {
                               labelText: 'Código de confirmação',
                               prefixIcon: Icon(Icons.verified_user_outlined),
                             ),
-                            validator: (v) => (v?.trim().length ?? 0) < 30
-                                ? 'Cole o código recebido por e-mail.'
-                                : null,
+                            validator:
+                                (v) =>
+                                    (v?.trim().length ?? 0) < 30
+                                        ? 'Cole o código recebido por e-mail.'
+                                        : null,
                           ),
                           const SizedBox(height: 16),
                         ] else if (register) ...[
@@ -810,20 +818,21 @@ class _AuthPageState extends State<AuthPage> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        if (!pendingVerification) TextButton(
-                          onPressed:
-                              loading
-                                  ? null
-                                  : () => setState(() {
-                                    register = !register;
-                                    error = null;
-                                  }),
-                          child: Text(
-                            register
-                                ? 'Já tenho uma conta • Entrar'
-                                : 'Ainda não tem conta? Cadastre-se',
+                        if (!pendingVerification)
+                          TextButton(
+                            onPressed:
+                                loading
+                                    ? null
+                                    : () => setState(() {
+                                      register = !register;
+                                      error = null;
+                                    }),
+                            child: Text(
+                              register
+                                  ? 'Já tenho uma conta • Entrar'
+                                  : 'Ainda não tem conta? Cadastre-se',
+                            ),
                           ),
-                        ),
                         if (widget.demo) ...[
                           const SizedBox(height: 18),
                           const Divider(),

@@ -425,7 +425,15 @@ export function createApi(db, config) {
         const uid = id();
         await db.query(
           "INSERT INTO public.usuarios(id,nome,email,senha_hash,tipo,telefone,email_verificado) VALUES($1,$2,$3,$4,$5,$6,$7)",
-          [uid, name, email, await hashPassword(password), body.role, phone, !config.emailVerificationRequired],
+          [
+            uid,
+            name,
+            email,
+            await hashPassword(password),
+            body.role,
+            phone,
+            !config.emailVerificationRequired,
+          ],
         );
         if (body.role === "cliente")
           await db.query("INSERT INTO public.clientes(usuario_id) VALUES($1)", [
@@ -439,17 +447,27 @@ export function createApi(db, config) {
         if (!config.emailVerificationRequired)
           return session(await one(userSql + " WHERE u.id=$1", [uid]));
         const token = id() + id();
-        await db.query("DELETE FROM leva_ai_private.verificacoes_email WHERE usuario_id=$1", [uid]);
+        await db.query(
+          "DELETE FROM leva_ai_private.verificacoes_email WHERE usuario_id=$1",
+          [uid],
+        );
         await db.query(
           "INSERT INTO leva_ai_private.verificacoes_email(token_hash,usuario_id,expira_em) VALUES($1,$2,$3)",
-          [await digest(token), uid, new Date(Date.now() + 86400000).toISOString()],
+          [
+            await digest(token),
+            uid,
+            new Date(Date.now() + 86400000).toISOString(),
+          ],
         );
         await sendEmail(config, {
           to: [email],
           subject: "Confirme seu cadastro no LevaAí",
           text: `Olá, ${name}. Use este código para confirmar seu cadastro: ${token}. Ele expira em 24 horas.`,
         });
-        return { pendingVerification: true, message: "Enviamos um código de confirmação para seu e-mail." };
+        return {
+          pendingVerification: true,
+          message: "Enviamos um código de confirmação para seu e-mail.",
+        };
       }
       if (method === "POST" && path === "/api/auth/verify-email") {
         const token = text(body.code, "Código", 30, 150);
@@ -458,7 +476,10 @@ export function createApi(db, config) {
           [await digest(token)],
         );
         ensure(verification, "Código inválido ou expirado.", 400);
-        await db.query("UPDATE public.usuarios SET email_verificado=true,atualizado_em=now() WHERE id=$1", [verification.usuario_id]);
+        await db.query(
+          "UPDATE public.usuarios SET email_verificado=true,atualizado_em=now() WHERE id=$1",
+          [verification.usuario_id],
+        );
         return { ok: true, message: "E-mail confirmado. Você já pode entrar." };
       }
       if (method === "POST" && path === "/api/auth/login") {
@@ -470,7 +491,11 @@ export function createApi(db, config) {
           "E-mail ou senha incorretos.",
           401,
         );
-        ensure(!config.emailVerificationRequired || found.email_verificado, "Confirme seu e-mail antes de entrar.", 403);
+        ensure(
+          !config.emailVerificationRequired || found.email_verificado,
+          "Confirme seu e-mail antes de entrar.",
+          403,
+        );
         return session(found);
       }
       if (method === "POST" && path === "/api/auth/forgot") {

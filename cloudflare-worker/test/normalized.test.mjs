@@ -21,7 +21,10 @@ test("modelo original: busca visitante, autorização, reserva, Pix, estados e a
     "utf8",
   );
   const emailVerification = await readFile(
-    new URL("../../supabase/migrations/202610160003_email_verification.sql", import.meta.url),
+    new URL(
+      "../../supabase/migrations/202610160003_email_verification.sql",
+      import.meta.url,
+    ),
     "utf8",
   );
   await pg.exec(base);
@@ -236,7 +239,9 @@ test("modelo original: busca visitante, autorização, reserva, Pix, estados e a
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async (_url, options) => {
       emailBody = JSON.parse(options.body).text;
-      return new Response(JSON.stringify({ id: "email-test" }), { status: 200 });
+      return new Response(JSON.stringify({ id: "email-test" }), {
+        status: 200,
+      });
     };
     const secureApi = createApi(db, {
       ...cfg,
@@ -248,23 +253,32 @@ test("modelo original: busca visitante, autorização, reserva, Pix, estados e a
       await pg.exec("BEGIN");
       try {
         const result = await secureApi.handle({
-          method: "POST", path: "/api" + path,
-          url: new URL("https://test/api" + path), body,
+          method: "POST",
+          path: "/api" + path,
+          url: new URL("https://test/api" + path),
+          body,
         });
         await pg.exec("COMMIT");
         return result;
-      } catch (error) { await pg.exec("ROLLBACK"); throw error; }
+      } catch (error) {
+        await pg.exec("ROLLBACK");
+        throw error;
+      }
     };
     const pending = await secureCall("/auth/register", {
-      name: "Conta Confirmada", email: "confirmar@example.com",
-      password: "SenhaForte123", phone: "11955550001", role: "cliente",
+      name: "Conta Confirmada",
+      email: "confirmar@example.com",
+      password: "SenhaForte123",
+      phone: "11955550001",
+      role: "cliente",
     });
     assert.equal(pending.pendingVerification, true);
     const code = emailBody.match(/([0-9a-f-]{72})/i)?.[1];
     assert.ok(code);
     await secureCall("/auth/verify-email", { code });
     const verified = await secureCall("/auth/login", {
-      email: "confirmar@example.com", password: "SenhaForte123",
+      email: "confirmar@example.com",
+      password: "SenhaForte123",
     });
     assert.equal(verified.user.email, "confirmar@example.com");
     globalThis.fetch = originalFetch;

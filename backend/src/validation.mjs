@@ -1,5 +1,6 @@
 /** Erro esperado que será apresentado pela API sem expor detalhes internos. */
 export class AppError extends Error {
+  /** Cria um erro controlado com status HTTP apropriado para o cliente. */
   constructor(message, status = 400) {
     super(message);
     this.status = status;
@@ -10,6 +11,7 @@ export function ensure(value, message, status = 400) {
   if (!value) throw new AppError(message, status);
 }
 export function text(value, label, min = 1, max = 200) {
+  /** Normaliza e limita um campo textual recebido pela API. */
   ensure(
     typeof value === "string" &&
       value.trim().length >= min &&
@@ -19,6 +21,7 @@ export function text(value, label, min = 1, max = 200) {
   return value.trim();
 }
 export function number(value, label, min, max, integer = false) {
+  /** Valida um número dentro dos limites de negócio informados. */
   ensure(
     typeof value === "number" &&
       Number.isFinite(value) &&
@@ -30,6 +33,7 @@ export function number(value, label, min, max, integer = false) {
   return value;
 }
 export function point(value) {
+  /** Converte um endereço geocodificado para o formato interno seguro. */
   ensure(value && typeof value === "object", "Selecione um endereço na busca.");
   return {
     label: text(value.label, "Endereço", 3, 500),
@@ -38,6 +42,7 @@ export function point(value) {
   };
 }
 export function serviceInput(b) {
+  /** Valida todos os dados enviados para cotar frete ou mudança. */
   const date = text(b.date, "Data", 10, 10);
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Sao_Paulo",
@@ -63,6 +68,7 @@ export function serviceInput(b) {
   };
 }
 export function vehicleInput(b) {
+  /** Valida e normaliza o cadastro de um veículo do prestador. */
   return {
     model: text(b.model, "Modelo", 2, 80),
     type: text(b.type, "Tipo", 2, 40),
