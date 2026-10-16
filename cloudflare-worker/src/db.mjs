@@ -37,10 +37,9 @@ export async function openDatabase(env) {
         throw error;
       }
     },
-    // Libera o cliente ao fim da requisição; o Hyperdrive mantém o pool da
-    // conexão de origem e não precisa que o socket do Worker fique aberto.
-    async close() {
-      await client.end();
-    },
+    // O Hyperdrive controla o pool e o ciclo de vida do socket. Encerrar o
+    // cliente explicitamente no fim da requisição pode falhar no runtime dos
+    // Workers depois de a resposta já estar pronta.
+    async close() {},
   };
 }
