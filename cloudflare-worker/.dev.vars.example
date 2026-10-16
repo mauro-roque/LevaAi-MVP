@@ -4,3 +4,4 @@ RESEND_API_KEY=re_xxxxxxxxxxxxxxxxx
 MAIL_FROM=LevaAí <noreply@seu-dominio.com.br>
 APP_ORIGIN=https://app.seu-dominio.com.br
 EMAIL_VERIFICATION_REQUIRED=true
+ALLOWED_ORIGINS=https://app.seu-dominio.com.br
