@@ -17,6 +17,7 @@ import {
 } from "./validation.mjs";
 import { createMaps, demoPlaces, distance } from "./maps.mjs";
 import { createPayments } from "./payments.mjs";
+import { sendEmail } from "./mail.mjs";
 export { configuration } from "./api.mjs";
 
 /** Converte o valor numérico do banco para centavos inteiros. */
@@ -37,7 +38,7 @@ const uuid = (value) => {
   );
   return value;
 };
-const userSql = `SELECT u.id,u.nome AS name,u.email,u.senha_hash AS password_hash,u.tipo AS role,u.telefone AS phone,u.ativo,
+const userSql = `SELECT u.id,u.nome AS name,u.email,u.senha_hash AS password_hash,u.tipo AS role,u.telefone AS phone,u.ativo,u.email_verificado,
  coalesce(p.status_disponibilidade='disponivel',true) AS available FROM public.usuarios u LEFT JOIN public.prestadores p ON p.usuario_id=u.id`;
 const vehicleSql = `SELECT v.*,a.quantidade_disponivel,a.valor_por_ajudante,a.disponivel AS equipe_disponivel
  FROM public.veiculos v LEFT JOIN public.ajudantes a ON a.id=v.ajudantes_id`;
@@ -423,8 +424,8 @@ export function createApi(db, config) {
         );
         const uid = id();
         await db.query(
-          "INSERT INTO public.usuarios(id,nome,email,senha_hash,tipo,telefone) VALUES($1,$2,$3,$4,$5,$6)",
-          [uid, name, email, await hashPassword(password), body.role, phone],
+          "INSERT INTO public.usuarios(id,nome,email,senha_hash,tipo,telefone,email_verificado) VALUES($1,$2,$3,$4,$5,$6,$7)",
+          [uid, name, email, await hashPassword(password), body.role, phone, !config.emailVerificationRequired],
         );
         if (body.role === "cliente")
           await db.query("INSERT INTO public.clientes(usuario_id) VALUES($1)", [
@@ -435,7 +436,30 @@ export function createApi(db, config) {
             "INSERT INTO public.prestadores(usuario_id) VALUES($1)",
             [uid],
           );
-        return session(await one(userSql + " WHERE u.id=$1", [uid]));
+        if (!config.emailVerificationRequired)
+          return session(await one(userSql + " WHERE u.id=$1", [uid]));
+        const token = id() + id();
+        await db.query("DELETE FROM leva_ai_private.verificacoes_email WHERE usuario_id=$1", [uid]);
+        await db.query(
+          "INSERT INTO leva_ai_private.verificacoes_email(token_hash,usuario_id,expira_em) VALUES($1,$2,$3)",
+          [await digest(token), uid, new Date(Date.now() + 86400000).toISOString()],
+        );
+        await sendEmail(config, {
+          to: [email],
+          subject: "Confirme seu cadastro no LevaAí",
+          text: `Olá, ${name}. Use este código para confirmar seu cadastro: ${token}. Ele expira em 24 horas.`,
+        });
+        return { pendingVerification: true, message: "Enviamos um código de confirmação para seu e-mail." };
+      }
+      if (method === "POST" && path === "/api/auth/verify-email") {
+        const token = text(body.code, "Código", 30, 150);
+        const verification = await one(
+          "DELETE FROM leva_ai_private.verificacoes_email WHERE token_hash=$1 AND expira_em>now() RETURNING usuario_id",
+          [await digest(token)],
+        );
+        ensure(verification, "Código inválido ou expirado.", 400);
+        await db.query("UPDATE public.usuarios SET email_verificado=true,atualizado_em=now() WHERE id=$1", [verification.usuario_id]);
+        return { ok: true, message: "E-mail confirmado. Você já pode entrar." };
       }
       if (method === "POST" && path === "/api/auth/login") {
         const email = text(body.email, "E-mail", 3, 150).toLowerCase(),
@@ -446,6 +470,7 @@ export function createApi(db, config) {
           "E-mail ou senha incorretos.",
           401,
         );
+        ensure(!config.emailVerificationRequired || found.email_verificado, "Confirme seu e-mail antes de entrar.", 403);
         return session(found);
       }
       if (method === "POST" && path === "/api/auth/forgot") {

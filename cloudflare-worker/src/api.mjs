@@ -53,6 +53,8 @@ export function configuration(env) {
     mpToken: env.MERCADO_PAGO_ACCESS_TOKEN,
     resendToken: env.RESEND_API_KEY,
     mailFrom: env.MAIL_FROM,
+    appOrigin: env.APP_ORIGIN,
+    emailVerificationRequired: env.EMAIL_VERIFICATION_REQUIRED === "true",
   };
 }
 

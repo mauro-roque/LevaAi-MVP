@@ -515,15 +515,16 @@ class _AuthPageState extends State<AuthPage> {
   final email = TextEditingController(),
       password = TextEditingController(),
       name = TextEditingController(),
-      phone = TextEditingController();
+      phone = TextEditingController(),
+      verificationCode = TextEditingController();
   final form = GlobalKey<FormState>();
-  bool register = false, loading = false, hidden = true;
+  bool register = false, loading = false, hidden = true, pendingVerification = false;
   String role = 'cliente';
   String? error;
   @override
   /// Libera todos os controladores de texto criados pelo formulário.
   void dispose() {
-    for (final c in [email, password, name, phone]) {
+    for (final c in [email, password, name, phone, verificationCode]) {
       c.dispose();
     }
     super.dispose();
@@ -538,17 +539,29 @@ class _AuthPageState extends State<AuthPage> {
     });
     try {
       final result = await widget.api.call(
-        '/auth/${register ? 'register' : 'login'}',
+        pendingVerification ? '/auth/verify-email' : '/auth/${register ? 'register' : 'login'}',
         method: 'POST',
-        body: {
-          'email': email.text.trim(),
-          'password': password.text,
-          'name': name.text.trim(),
-          'phone': phone.text.trim(),
-          'role': role,
-        },
+        body: pendingVerification
+            ? {'code': verificationCode.text.trim()}
+            : {
+                'email': email.text.trim(),
+                'password': password.text,
+                'name': name.text.trim(),
+                'phone': phone.text.trim(),
+                'role': role,
+              },
       );
-      if (mounted) widget.onAuthenticated(result);
+      if (mounted && result['pendingVerification'] == true) {
+        setState(() => pendingVerification = true);
+      } else if (mounted && pendingVerification) {
+        setState(() {
+          pendingVerification = false;
+          register = false;
+          error = 'E-mail confirmado. Entre com sua conta.';
+        });
+      } else if (mounted) {
+        widget.onAuthenticated(result);
+      }
     } catch (e) {
       if (mounted) setState(() => error = e.toString());
     } finally {
@@ -657,20 +670,37 @@ class _AuthPageState extends State<AuthPage> {
                           const SizedBox(height: 40),
                         ],
                         Text(
-                          register
+                          pendingVerification
+                              ? 'Confirme seu e-mail'
+                              : register
                               ? 'Vamos começar?'
                               : 'Bom ter você por aqui.',
                           style: Theme.of(context).textTheme.headlineLarge,
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          register
+                          pendingVerification
+                              ? 'Enviamos um código para ${email.text.trim()}.'
+                              : register
                               ? 'Crie sua conta e escolha como quer usar o LevaAí.'
                               : 'Entre para continuar. Sua busca está salva.',
                           style: const TextStyle(color: muted),
                         ),
                         const SizedBox(height: 30),
-                        if (register) ...[
+                        if (pendingVerification) ...[
+                          TextFormField(
+                            controller: verificationCode,
+                            keyboardType: TextInputType.text,
+                            decoration: const InputDecoration(
+                              labelText: 'Código de confirmação',
+                              prefixIcon: Icon(Icons.verified_user_outlined),
+                            ),
+                            validator: (v) => (v?.trim().length ?? 0) < 30
+                                ? 'Cole o código recebido por e-mail.'
+                                : null,
+                          ),
+                          const SizedBox(height: 16),
+                        ] else if (register) ...[
                           SegmentedButton<String>(
                             segments: const [
                               ButtonSegment(
@@ -772,13 +802,15 @@ class _AuthPageState extends State<AuthPage> {
                           child: Text(
                             loading
                                 ? 'Aguarde…'
+                                : pendingVerification
+                                ? 'Confirmar e-mail'
                                 : register
                                 ? 'Criar minha conta'
                                 : 'Entrar na minha conta',
                           ),
                         ),
                         const SizedBox(height: 16),
-                        TextButton(
+                        if (!pendingVerification) TextButton(
                           onPressed:
                               loading
                                   ? null
