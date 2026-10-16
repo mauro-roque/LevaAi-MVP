@@ -44,6 +44,14 @@ export function configuration(env) {
     "JWT_SECRET precisa ter pelo menos 32 caracteres.",
     500,
   );
+  const emailVerificationRequired = env.EMAIL_VERIFICATION_REQUIRED === "true";
+  ensure(
+    !emailVerificationRequired ||
+      (typeof env.RESEND_API_KEY === "string" &&
+        typeof env.MAIL_FROM === "string"),
+    "A confirmação de e-mail exige RESEND_API_KEY e MAIL_FROM configurados.",
+    500,
+  );
   return {
     demo,
     secret: env.JWT_SECRET,
@@ -54,7 +62,7 @@ export function configuration(env) {
     resendToken: env.RESEND_API_KEY,
     mailFrom: env.MAIL_FROM,
     appOrigin: env.APP_ORIGIN,
-    emailVerificationRequired: env.EMAIL_VERIFICATION_REQUIRED === "true",
+    emailVerificationRequired,
     allowedOrigins: String(env.ALLOWED_ORIGINS || "")
       .split(",")
       .map((origin) => origin.trim())

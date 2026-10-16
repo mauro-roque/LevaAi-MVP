@@ -1,0 +1,23 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "leva-ai-platform",
+  "main": "src/index.mjs",
+  "compatibility_date": "2026-09-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "DEMO_MODE": "false",
+    "EMAIL_VERIFICATION_REQUIRED": "true",
+    "MAPS_USER_AGENT": "LevaAi/1.0 (contato@seu-dominio.com.br)",
+    "ALLOWED_ORIGINS": "https://app.seu-dominio.com.br"
+  },
+  "hyperdrive": [
+    { "binding": "HYPERDRIVE", "id": "SUBSTITUA_PELO_HYPERDRIVE_DE_PRODUCAO" }
+  ],
+  "observability": { "logs": { "enabled": true, "persist": true } },
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  }
+}

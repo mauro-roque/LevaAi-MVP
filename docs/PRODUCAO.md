@@ -2,6 +2,8 @@
 
 Esta cópia evolui separadamente do MVP em `LevaAi-MVP`.
 
+Ao publicar com `wrangler.production.jsonc.example`, o modo demonstração fica desligado: não são criadas contas de exemplo, o formulário pesquisa endereços reais e a rota é calculada pelo provedor de mapas. Usuários e prestadores passam a ser exclusivamente os que se cadastrarem no aplicativo.
+
 ## O que já foi preparado
 
 - Cadastro passa a exigir confirmação por e-mail antes de liberar o login.
@@ -15,7 +17,7 @@ Esta cópia evolui separadamente do MVP em `LevaAi-MVP`.
 2. No Cloudflare Worker, configure os segredos `RESEND_API_KEY` e `MAIL_FROM`.
 3. Configure `EMAIL_VERIFICATION_REQUIRED=true` e `APP_ORIGIN` com o domínio final.
 4. Configure `ALLOWED_ORIGINS` com os domínios públicos separados por vírgula. O Worker rejeita chamadas CORS de outras origens.
-4. Aplique as migrações SQL em ordem no Supabase.
+5. Aplique as migrações SQL em ordem no Supabase.
 
 O domínio e a conta do provedor pertencem ao proprietário do produto; por isso esta etapa não é automatizada no código.
 
