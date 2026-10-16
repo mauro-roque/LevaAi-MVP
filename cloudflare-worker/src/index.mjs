@@ -11,12 +11,17 @@ function securityHeaders(headers) {
   headers.set("X-Content-Type-Options", "nosniff");
   headers.set("X-Frame-Options", "DENY");
   headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  headers.set(
+    "Strict-Transport-Security",
+    "max-age=31536000; includeSubDomains",
+  );
   headers.set("Cache-Control", "no-store");
 }
 
 /** Autoriza o domínio publicado e o Flutter Web executado localmente. */
-function isAllowedOrigin(origin, apiOrigin) {
-  if (origin === apiOrigin) return true;
+function isAllowedOrigin(origin, apiOrigin, allowedOrigins) {
+  if (origin === apiOrigin || allowedOrigins.includes(origin)) return true;
   try {
     const url = new URL(origin);
     return (
@@ -85,10 +90,11 @@ export function createWorker(databaseFactory = openDatabase) {
       securityHeaders(headers);
       try {
         if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
+        const config = configuration(env);
         const origin = request.headers.get("Origin");
         if (origin) {
           ensure(
-            isAllowedOrigin(origin, url.origin),
+            isAllowedOrigin(origin, url.origin, config.allowedOrigins),
             "Origem não autorizada.",
             403,
           );
@@ -106,7 +112,6 @@ export function createWorker(databaseFactory = openDatabase) {
         if (request.method === "OPTIONS")
           return new Response(null, { status: 204, headers });
         rateLimit(request, url.pathname);
-        const config = configuration(env);
         // Endpoints de disponibilidade não dependem do banco e continuam
         // informativos mesmo se o provedor estiver em manutenção.
         if (request.method === "GET" && url.pathname === "/api/health")

@@ -55,6 +55,10 @@ export function configuration(env) {
     mailFrom: env.MAIL_FROM,
     appOrigin: env.APP_ORIGIN,
     emailVerificationRequired: env.EMAIL_VERIFICATION_REQUIRED === "true",
+    allowedOrigins: String(env.ALLOWED_ORIGINS || "")
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean),
   };
 }
 

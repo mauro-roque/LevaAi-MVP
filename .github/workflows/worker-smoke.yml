@@ -2,7 +2,9 @@ name: Verificar Worker publicado
 
 on:
   push:
-    branches: [main]
+    branches: [main, platform]
+  pull_request:
+    branches: [main, platform]
   workflow_dispatch:
 
 jobs:

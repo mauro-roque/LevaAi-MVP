@@ -14,6 +14,14 @@ Esta cópia evolui separadamente do MVP em `LevaAi-MVP`.
 1. Crie uma conta Resend e verifique um domínio próprio, como `levaai.com.br`.
 2. No Cloudflare Worker, configure os segredos `RESEND_API_KEY` e `MAIL_FROM`.
 3. Configure `EMAIL_VERIFICATION_REQUIRED=true` e `APP_ORIGIN` com o domínio final.
+4. Configure `ALLOWED_ORIGINS` com os domínios públicos separados por vírgula. O Worker rejeita chamadas CORS de outras origens.
 4. Aplique as migrações SQL em ordem no Supabase.
 
 O domínio e a conta do provedor pertencem ao proprietário do produto; por isso esta etapa não é automatizada no código.
+
+## Operação em escala
+
+- Use um Worker, um banco e um Hyperdrive exclusivos para produção; o ambiente MVP continua isolado.
+- Configure uma regra **Rate limiting** no painel Cloudflare para `/api/auth/*` e `/api/*`, pois o limite em memória do Worker é apenas uma proteção complementar por instância.
+- Mantenha `DEMO_MODE=false` em produção e monitore os endpoints `/api/health` e `/api/health/database`.
+- Proteja `main` no GitHub: pull request obrigatório, aprovação de revisão e execução do workflow antes do merge.
