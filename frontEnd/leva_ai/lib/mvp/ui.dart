@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'api.dart';
 
 const blue = Color(0xFF2156E8);
@@ -669,6 +670,152 @@ class _CitySearchSheetState extends State<_CitySearchSheet> {
         ),
       ),
     ),
+  );
+}
+
+/// Campo de CEP que confirma o endereço encontrado antes de usá-lo na rota.
+class PostalCodeField extends StatefulWidget {
+  final Api api;
+  final String label;
+  final Json? value;
+  final ValueChanged<Json?> onChanged;
+
+  const PostalCodeField({
+    super.key,
+    required this.api,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  State<PostalCodeField> createState() => _PostalCodeFieldState();
+}
+
+/// Busca o endereço do CEP assim que os oito dígitos forem informados.
+class _PostalCodeFieldState extends State<PostalCodeField> {
+  late final TextEditingController controller;
+  bool loading = false;
+  String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = TextEditingController(text: _format(widget.value?['cep']));
+  }
+
+  @override
+  void didUpdateWidget(covariant PostalCodeField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.value != null && widget.value != oldWidget.value) {
+      controller.text = _format(widget.value!['cep']);
+    }
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  /// Mantém o CEP no formato brasileiro sem alterar o valor enviado à API.
+  String _format(dynamic value) {
+    final digits = (value ?? '').toString().replaceAll(RegExp(r'\D'), '');
+    if (digits.length <= 5) return digits;
+    return '${digits.substring(0, 5)}-${digits.substring(5)}';
+  }
+
+  /// Resolve CEP, exibe o endereço encontrado e devolve seu ponto geocodificado.
+  Future<void> lookup() async {
+    final cep = controller.text.replaceAll(RegExp(r'\D'), '');
+    if (loading || cep.length != 8) return;
+    setState(() {
+      loading = true;
+      error = null;
+    });
+    try {
+      final found = await widget.api.call('/maps/cep?cep=$cep') as Json;
+      if (mounted) widget.onChanged(found);
+    } catch (e) {
+      if (mounted) setState(() => error = e.toString());
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(8),
+        ],
+        onChanged: (value) {
+          widget.onChanged(null);
+          setState(() => error = null);
+          if (value.length == 8) lookup();
+        },
+        decoration: InputDecoration(
+          labelText: widget.label,
+          hintText: '00000-000',
+          prefixIcon: Icon(
+            widget.value == null
+                ? Icons.markunread_mailbox_outlined
+                : Icons.check_circle_outline,
+            color: widget.value == null ? muted : Colors.teal,
+          ),
+          suffixIcon:
+              loading
+                  ? const Padding(
+                    padding: EdgeInsets.all(15),
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                  : IconButton(
+                    tooltip: 'Buscar CEP',
+                    onPressed: lookup,
+                    icon: const Icon(Icons.search),
+                  ),
+        ),
+      ),
+      if (error != null)
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Text(
+            error!,
+            style: TextStyle(color: Colors.red.shade700, fontSize: 12),
+          ),
+        ),
+      if (widget.value != null)
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(top: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF0FAF6),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.verified_outlined, color: Colors.teal),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Endereço confirmado: ${widget.value!['label']}',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
+    ],
   );
 }
 

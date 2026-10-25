@@ -132,6 +132,41 @@ export function createMaps(config) {
       queue = operation.catch(() => {});
       return operation;
     },
+    /** Resolve um CEP brasileiro e geocodifica o endereço para o cálculo da rota. */
+    async postalCode(value) {
+      const cep = String(value ?? "").replace(/\D/g, "");
+      ensure(/^\d{8}$/.test(cep), "Informe um CEP com 8 dígitos.");
+      const postal = await get(`https://viacep.com.br/ws/${cep}/json/`);
+      ensure(!postal.erro, "CEP não encontrado.", 404);
+      ensure(postal.localidade && postal.uf, "CEP sem cidade ou estado.", 422);
+      const address = [
+        postal.logradouro,
+        postal.bairro,
+        postal.localidade,
+        postal.uf,
+        "Brasil",
+      ]
+        .filter(Boolean)
+        .join(", ");
+      const places = await this.search(address);
+      ensure(
+        places.length,
+        "Não foi possível localizar este CEP no mapa.",
+        422,
+      );
+      return {
+        ...places[0],
+        label: [
+          postal.logradouro || "CEP sem logradouro",
+          postal.bairro,
+          `${postal.localidade} - ${postal.uf}`,
+          `CEP ${cep.substring(0, 5)}-${cep.substring(5)}`,
+        ]
+          .filter(Boolean)
+          .join(", "),
+        cep,
+      };
+    },
     /** Calcula uma rota de carro ou devolve a rota controlada do modo demo. */
     async route(origin, destination, demo) {
       ensure(

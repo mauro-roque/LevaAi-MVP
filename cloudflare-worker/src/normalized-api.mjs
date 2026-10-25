@@ -433,6 +433,7 @@ export function createApi(db, config) {
       const guestRoutes = [
         "/api/quotes",
         "/api/maps/search",
+        "/api/maps/cep",
         "/api/maps/route",
       ];
       const isPublic =
@@ -653,6 +654,8 @@ export function createApi(db, config) {
             citiesOnly: url.searchParams.get("city") === "true",
           },
         );
+      if (method === "GET" && path === "/api/maps/cep")
+        return maps.postalCode(url.searchParams.get("cep"));
       if (method === "POST" && path === "/api/maps/route")
         return maps.route(point(body.origin), point(body.destination));
       const pm = path.match(/^\/api\/providers\/([^/]+)$/);

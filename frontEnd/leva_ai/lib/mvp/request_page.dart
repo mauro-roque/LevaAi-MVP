@@ -31,6 +31,7 @@ class _RequestPageState extends State<RequestPage> {
   DateTime date = DateTime.now().add(const Duration(days: 1));
   Json? origin, destination, originCity, destinationCity, result, routePreview;
   bool loading = false, routeLoading = false;
+  bool usePostalCodes = false;
   String type = 'frete';
   String sortBy = 'Menor preço';
   int helpers = 0;
@@ -129,6 +130,20 @@ class _RequestPageState extends State<RequestPage> {
         destinationCity = value;
         destination = null;
       }
+      result = null;
+      routePreview = null;
+      error = null;
+    });
+  }
+
+  /// Alterna a busca por CEP e descarta o trajeto anterior para evitar mistura de modos.
+  void updatePostalMode(bool enabled) {
+    setState(() {
+      usePostalCodes = enabled;
+      origin = null;
+      destination = null;
+      originCity = null;
+      destinationCity = null;
       result = null;
       routePreview = null;
       error = null;
@@ -478,67 +493,102 @@ class _RequestPageState extends State<RequestPage> {
                     ),
                   ],
                 ),
-              Text(
-                'Cidades do trajeto',
-                style: Theme.of(
-                  context,
-                ).textTheme.labelLarge?.copyWith(color: muted),
-              ),
-              const SizedBox(height: 8),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final wide = constraints.maxWidth >= 620;
-                  final originPicker = CityPicker(
-                    api: widget.api,
-                    label: 'Cidade de origem',
-                    value: originCity,
-                    onChanged: (v) => updateCity(true, v),
-                  );
-                  final destinationPicker = CityPicker(
-                    api: widget.api,
-                    label: 'Cidade de destino',
-                    value: destinationCity,
-                    onChanged: (v) => updateCity(false, v),
-                  );
-                  if (wide) {
-                    return Row(
-                      children: [
-                        Expanded(child: originPicker),
-                        const SizedBox(width: 12),
-                        Expanded(child: destinationPicker),
-                      ],
-                    );
-                  }
-                  return Column(
-                    children: [
-                      SizedBox(width: double.infinity, child: originPicker),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        width: double.infinity,
-                        child: destinationPicker,
-                      ),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: 14),
-              AddressField(
-                api: widget.api,
-                label: 'Endereço de origem',
-                value: origin,
-                cityLabel: originCity?['label'],
-                enabled: originCity != null,
-                onChanged: (v) => updateAddress(true, v),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF7F9FD),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.pin_drop_outlined, color: blue),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Text('Prefere informar somente os CEPs?'),
+                    ),
+                    Switch(value: usePostalCodes, onChanged: updatePostalMode),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
-              AddressField(
-                api: widget.api,
-                label: 'Endereço de destino',
-                value: destination,
-                cityLabel: destinationCity?['label'],
-                enabled: destinationCity != null,
-                onChanged: (v) => updateAddress(false, v),
-              ),
+              if (usePostalCodes) ...[
+                PostalCodeField(
+                  api: widget.api,
+                  label: 'CEP de origem',
+                  value: origin,
+                  onChanged: (v) => updateAddress(true, v),
+                ),
+                const SizedBox(height: 16),
+                PostalCodeField(
+                  api: widget.api,
+                  label: 'CEP de destino',
+                  value: destination,
+                  onChanged: (v) => updateAddress(false, v),
+                ),
+              ] else ...[
+                Text(
+                  'Cidades do trajeto',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelLarge?.copyWith(color: muted),
+                ),
+                const SizedBox(height: 8),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final wide = constraints.maxWidth >= 620;
+                    final originPicker = CityPicker(
+                      api: widget.api,
+                      label: 'Cidade de origem',
+                      value: originCity,
+                      onChanged: (v) => updateCity(true, v),
+                    );
+                    final destinationPicker = CityPicker(
+                      api: widget.api,
+                      label: 'Cidade de destino',
+                      value: destinationCity,
+                      onChanged: (v) => updateCity(false, v),
+                    );
+                    if (wide) {
+                      return Row(
+                        children: [
+                          Expanded(child: originPicker),
+                          const SizedBox(width: 12),
+                          Expanded(child: destinationPicker),
+                        ],
+                      );
+                    }
+                    return Column(
+                      children: [
+                        SizedBox(width: double.infinity, child: originPicker),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: destinationPicker,
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 14),
+                AddressField(
+                  api: widget.api,
+                  label: 'Endereço de origem',
+                  value: origin,
+                  cityLabel: originCity?['label'],
+                  enabled: originCity != null,
+                  onChanged: (v) => updateAddress(true, v),
+                ),
+                const SizedBox(height: 16),
+                AddressField(
+                  api: widget.api,
+                  label: 'Endereço de destino',
+                  value: destination,
+                  cityLabel: destinationCity?['label'],
+                  enabled: destinationCity != null,
+                  onChanged: (v) => updateAddress(false, v),
+                ),
+              ],
               if (routeLoading)
                 const Padding(
                   padding: EdgeInsets.only(top: 16),
