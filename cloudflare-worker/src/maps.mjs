@@ -148,7 +148,12 @@ export function createMaps(config) {
       ]
         .filter(Boolean)
         .join(", ");
-      const places = await this.search(address);
+      let places = await this.search(address);
+      // Alguns CEPs válidos não têm a rua indexada no geocodificador. Nesse
+      // caso, calcula-se usando o centro do município informado pelo ViaCEP,
+      // preservando o endereço real na confirmação exibida à pessoa usuária.
+      if (!places.length)
+        places = await this.search(`${postal.localidade}, ${postal.uf}, Brasil`);
       ensure(
         places.length,
         "Não foi possível localizar este CEP no mapa.",

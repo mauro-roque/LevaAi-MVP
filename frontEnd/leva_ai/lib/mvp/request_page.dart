@@ -493,25 +493,24 @@ class _RequestPageState extends State<RequestPage> {
                     ),
                   ],
                 ),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF7F9FD),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.pin_drop_outlined, color: blue),
-                    const SizedBox(width: 10),
-                    const Expanded(
-                      child: Text('Prefere informar somente os CEPs?'),
-                    ),
-                    Switch(value: usePostalCodes, onChanged: updatePostalMode),
-                  ],
-                ),
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 10,
+                runSpacing: 6,
+                children: [
+                  FilterChip(
+                    avatar: const Icon(Icons.pin_drop_outlined, size: 18),
+                    label: const Text('Usar CEP'),
+                    selected: usePostalCodes,
+                    onSelected: updatePostalMode,
+                  ),
+                  const Text(
+                    'Calcula a rota após confirmar os dois endereços.',
+                    style: TextStyle(fontSize: 12, color: muted),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               if (usePostalCodes) ...[
                 PostalCodeField(
                   api: widget.api,

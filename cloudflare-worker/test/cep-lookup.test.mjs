@@ -5,6 +5,7 @@ import { createApi } from "../src/normalized-api.mjs";
 /** Valida a confirmação visual e o ponto geocodificado devolvidos para um CEP. */
 test("consulta CEP devolve endereço confirmado e coordenadas", async () => {
   const originalFetch = globalThis.fetch;
+  let geocodingCalls = 0;
   globalThis.fetch = async (url) => {
     const request = String(url);
     if (request.includes("viacep.com.br"))
@@ -19,6 +20,9 @@ test("consulta CEP devolve endereço confirmado e coordenadas", async () => {
         { status: 200 },
       );
     assert.match(request, /nominatim\.test/);
+    geocodingCalls += 1;
+    if (geocodingCalls == 1)
+      return new Response(JSON.stringify([]), { status: 200 });
     return new Response(
       JSON.stringify([
         {
@@ -51,6 +55,7 @@ test("consulta CEP devolve endereço confirmado e coordenadas", async () => {
       lon: -49.3,
       cep: "18800000",
     });
+    assert.equal(geocodingCalls, 2);
   } finally {
     globalThis.fetch = originalFetch;
   }
