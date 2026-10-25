@@ -559,7 +559,7 @@ class _RequestPageState extends State<RequestPage> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          '${decimal(routePreview!['distanceKm'])} km • aproximadamente ${routePreview!['durationMinutes']} min',
+                          '${decimal(routePreview!['distanceKm'])} km • aproximadamente ${durationLabel(routePreview!['durationMinutes'])}',
                           style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                       ),
@@ -770,7 +770,7 @@ class _RequestPageState extends State<RequestPage> {
             RouteMap(route: result!['route']),
             const SizedBox(height: 16),
             Text(
-              '${decimal(result!['route']['distanceKm'])} km • aproximadamente ${result!['route']['durationMinutes']} min',
+              '${decimal(result!['route']['distanceKm'])} km • aproximadamente ${durationLabel(result!['route']['durationMinutes'])}',
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 10),
@@ -1022,7 +1022,7 @@ class _RequestPageState extends State<RequestPage> {
                 '${decimal(v['capacityKg'])} kg / ${decimal(v['volumeM3'])} m³',
               ),
               Text('${decimal(d['route']['distanceKm'])} km de percurso'),
-              Text('${decimal(d['route']['durationMinutes'])} min estimados'),
+              Text('${durationLabel(d['route']['durationMinutes'])} estimados'),
             ],
           ),
           const SizedBox(height: 14),

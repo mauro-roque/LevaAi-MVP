@@ -34,6 +34,16 @@ String money(num cents) =>
 String decimal(num n) =>
     n.toStringAsFixed(n % 1 == 0 ? 0 : 1).replaceAll('.', ',');
 
+/// Converte minutos em uma duração curta e natural para a interface.
+String durationLabel(num minutes) {
+  final total = minutes.round();
+  final hours = total ~/ 60;
+  final remainingMinutes = total % 60;
+  if (hours == 0) return '$total min';
+  if (remainingMinutes == 0) return '$hours h';
+  return '$hours h $remainingMinutes min';
+}
+
 /// Transforma uma data ISO no formato curto usado pela interface.
 String dateLabel(String date) => date.split('-').reversed.join('/');
 const statusNames = {

@@ -9,6 +9,12 @@ import 'package:leva_ai/mvp/request_page.dart';
 import 'package:leva_ai/mvp/ui.dart';
 
 void main() {
+  test('formata duração de rota em horas e minutos', () {
+    expect(durationLabel(45), '45 min');
+    expect(durationLabel(120), '2 h');
+    expect(durationLabel(279), '4 h 39 min');
+  });
+
   testWidgets(
     'visitante vê apresentação, pesquisa e volta do login sem perder dados',
     (tester) async {
