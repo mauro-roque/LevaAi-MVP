@@ -29,7 +29,7 @@ class _RequestPageState extends State<RequestPage> {
       weight = TextEditingController(text: '100'),
       volume = TextEditingController(text: '2');
   DateTime date = DateTime.now().add(const Duration(days: 1));
-  Json? origin, destination, result, routePreview;
+  Json? origin, destination, originCity, destinationCity, result, routePreview;
   bool loading = false, routeLoading = false;
   String type = 'frete';
   String sortBy = 'Menor preço';
@@ -117,6 +117,22 @@ class _RequestPageState extends State<RequestPage> {
     if (value != null && origin != null && destination != null) {
       calculateRoute();
     }
+  }
+
+  /// Define a cidade de busca e invalida o endereço anterior daquele trajeto.
+  void updateCity(bool isOrigin, Json? value) {
+    setState(() {
+      if (isOrigin) {
+        originCity = value;
+        origin = null;
+      } else {
+        destinationCity = value;
+        destination = null;
+      }
+      result = null;
+      routePreview = null;
+      error = null;
+    });
   }
 
   /// Valida dados e pesquisa veículos compatíveis sem exigir autenticação.
@@ -464,15 +480,37 @@ class _RequestPageState extends State<RequestPage> {
                 ),
               AddressField(
                 api: widget.api,
+                label: 'Cidade de origem',
+                hintText: 'Digite a cidade e o estado',
+                minimumQueryLength: 3,
+                value: originCity,
+                onChanged: (v) => updateCity(true, v),
+              ),
+              const SizedBox(height: 12),
+              AddressField(
+                api: widget.api,
                 label: 'Endereço de origem',
                 value: origin,
+                cityLabel: originCity?['label'],
+                enabled: originCity != null,
                 onChanged: (v) => updateAddress(true, v),
               ),
               const SizedBox(height: 16),
               AddressField(
                 api: widget.api,
+                label: 'Cidade de destino',
+                hintText: 'Digite a cidade e o estado',
+                minimumQueryLength: 3,
+                value: destinationCity,
+                onChanged: (v) => updateCity(false, v),
+              ),
+              const SizedBox(height: 12),
+              AddressField(
+                api: widget.api,
                 label: 'Endereço de destino',
                 value: destination,
+                cityLabel: destinationCity?['label'],
+                enabled: destinationCity != null,
                 onChanged: (v) => updateAddress(false, v),
               ),
               if (routeLoading)

@@ -97,6 +97,51 @@ void main() {
     api.dispose();
   });
 
+  testWidgets('seleciona a cidade antes de liberar o endereço', (tester) async {
+    final api = Api(
+      client: MockClient((request) async {
+        if (request.url.path.endsWith('/maps/search')) {
+          return http.Response(
+            jsonEncode([
+              {
+                'label': 'Piraju, São Paulo, Brasil',
+                'lat': -23.2,
+                'lon': -49.3,
+              },
+            ]),
+            200,
+          );
+        }
+        return http.Response('{}', 200);
+      }),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: appTheme(),
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: RequestPage(
+              api: api,
+              config: const {'demo': false},
+              onBooked: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Cidade de origem'), findsOneWidget);
+    expect(find.text('Cidade de destino'), findsOneWidget);
+    expect(find.text('Selecione a cidade primeiro'), findsNWidgets(2));
+
+    expect(
+      tester.widget<TextField>(find.byType(TextField).at(1)).enabled,
+      isFalse,
+    );
+    expect(tester.takeException(), isNull);
+    api.dispose();
+  });
+
   for (final size in [const Size(390, 844), const Size(1440, 1000)]) {
     testWidgets('solicitação e login sem overflow em ${size.width}px', (
       tester,

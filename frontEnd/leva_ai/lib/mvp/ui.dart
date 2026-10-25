@@ -259,6 +259,10 @@ class AddressField extends StatefulWidget {
   final String label;
   final Json? value;
   final ValueChanged<Json?> onChanged;
+  final String? cityLabel;
+  final String hintText;
+  final int minimumQueryLength;
+  final bool enabled;
 
   /// Recebe a seleção atual e comunica à tela pai quando o endereço muda.
   const AddressField({
@@ -267,6 +271,10 @@ class AddressField extends StatefulWidget {
     required this.label,
     required this.value,
     required this.onChanged,
+    this.cityLabel,
+    this.hintText = 'Rua, número, cidade e estado',
+    this.minimumQueryLength = 4,
+    this.enabled = true,
   });
   @override
   State<AddressField> createState() => _AddressFieldState();
@@ -290,6 +298,11 @@ class _AddressFieldState extends State<AddressField> {
   /// Sincroniza o texto quando a tela pai troca o endereço selecionado.
   void didUpdateWidget(covariant AddressField oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.cityLabel != oldWidget.cityLabel) {
+      controller.clear();
+      results = [];
+      error = null;
+    }
     if (widget.value != null && widget.value != oldWidget.value) {
       controller.text = widget.value!['label'];
       results = [];
@@ -306,9 +319,15 @@ class _AddressFieldState extends State<AddressField> {
 
   /// Consulta a busca de endereços e apresenta as opções geocodificadas.
   Future<void> search() async {
-    if (loading) return;
-    if (controller.text.trim().length < 4) {
-      setState(() => error = 'Digite rua, número e cidade.');
+    if (loading || !widget.enabled) return;
+    if (controller.text.trim().length < widget.minimumQueryLength) {
+      setState(
+        () =>
+            error =
+                widget.cityLabel == null
+                    ? 'Digite pelo menos ${widget.minimumQueryLength} caracteres.'
+                    : 'Digite rua e número para buscar nesta cidade.',
+      );
       return;
     }
     setState(() {
@@ -317,16 +336,23 @@ class _AddressFieldState extends State<AddressField> {
       results = [];
     });
     try {
+      final query = [
+        controller.text.trim(),
+        if (widget.cityLabel != null) widget.cityLabel!,
+      ].join(', ');
       final found =
           await widget.api.call(
-                '/maps/search?q=${Uri.encodeQueryComponent(controller.text)}',
+                '/maps/search?q=${Uri.encodeQueryComponent(query)}',
               )
               as List;
       if (mounted) {
         setState(() {
           results = found;
           if (found.isEmpty) {
-            error = 'Endereço não encontrado. Inclua a cidade e o estado.';
+            error =
+                widget.cityLabel == null
+                    ? 'Cidade não encontrada. Inclua o estado na busca.'
+                    : 'Endereço não encontrado nesta cidade.';
           }
         });
       }
@@ -344,18 +370,20 @@ class _AddressFieldState extends State<AddressField> {
     children: [
       TextField(
         controller: controller,
+        enabled: widget.enabled,
         onChanged: (_) {
           widget.onChanged(null);
           setState(() => results = []);
           debounce?.cancel();
-          if (controller.text.trim().length >= 4) {
+          if (controller.text.trim().length >= widget.minimumQueryLength) {
             debounce = Timer(const Duration(milliseconds: 450), search);
           }
         },
         onSubmitted: (_) => search(),
         decoration: InputDecoration(
           labelText: widget.label,
-          hintText: 'Rua, número, cidade e estado',
+          hintText:
+              widget.enabled ? widget.hintText : 'Selecione a cidade primeiro',
           prefixIcon: Icon(
             widget.value == null
                 ? Icons.location_on_outlined
