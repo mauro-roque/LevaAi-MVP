@@ -30,7 +30,7 @@ class _RequestPageState extends State<RequestPage> {
       volume = TextEditingController(text: '2');
   DateTime date = DateTime.now().add(const Duration(days: 1));
   Json? origin, destination, result;
-  bool demoRoute = false, loading = false;
+  bool loading = false;
   String type = 'frete';
   String sortBy = 'Menor preço';
   int helpers = 0;
@@ -49,7 +49,6 @@ class _RequestPageState extends State<RequestPage> {
       helpers = d['helpers'];
       type = d['type'];
       date = DateTime.parse(d['date']);
-      demoRoute = d['demoRoute'] == true;
     }
   }
 
@@ -63,7 +62,6 @@ class _RequestPageState extends State<RequestPage> {
     'weightKg': double.tryParse(weight.text.replaceAll(',', '.')) ?? 0,
     'volumeM3': double.tryParse(volume.text.replaceAll(',', '.')) ?? 0,
     'helpers': helpers,
-    'demoRoute': demoRoute,
   };
   @override
   /// Libera os controladores vinculados ao formulário de solicitação.
@@ -77,22 +75,6 @@ class _RequestPageState extends State<RequestPage> {
   /// Descarta resultados quando um campo que afeta preço ou compatibilidade muda.
   void invalidate() {
     if (result != null) setState(() => result = null);
-  }
-
-  /// Preenche uma rota conhecida para a demonstração do projeto.
-  void useExample() {
-    final places = widget.config['demoPlaces'] as List;
-    setState(() {
-      origin = Map<String, dynamic>.from(places[0]);
-      destination = Map<String, dynamic>.from(places[1]);
-      demoRoute = true;
-      items.text = '1 sofá de dois lugares e 4 caixas';
-      weight.text = '100';
-      volume.text = '2';
-      helpers = 1;
-      result = null;
-      error = null;
-    });
   }
 
   /// Valida dados e pesquisa veículos compatíveis sem exigir autenticação.
@@ -122,7 +104,6 @@ class _RequestPageState extends State<RequestPage> {
           'weightKg': double.parse(weight.text.replaceAll(',', '.')),
           'volumeM3': double.parse(volume.text.replaceAll(',', '.')),
           'helpers': helpers,
-          'demoRoute': demoRoute,
         },
       );
       if (mounted) setState(() => result = data);
@@ -388,7 +369,6 @@ class _RequestPageState extends State<RequestPage> {
             destination = picked;
           }
           result = null;
-          demoRoute = false;
         });
       }
     } catch (e) {
@@ -443,7 +423,6 @@ class _RequestPageState extends State<RequestPage> {
                     (v) => setState(() {
                       origin = v;
                       result = null;
-                      if (v == null) demoRoute = false;
                     }),
               ),
               const SizedBox(height: 16),
@@ -455,35 +434,8 @@ class _RequestPageState extends State<RequestPage> {
                     (v) => setState(() {
                       destination = v;
                       result = null;
-                      if (v == null) demoRoute = false;
                     }),
               ),
-              if (widget.config['demo'] == true) ...[
-                const SizedBox(height: 8),
-                TextButton.icon(
-                  onPressed: useExample,
-                  icon: const Icon(Icons.science_outlined, size: 17),
-                  label: const Text('Preencher um frete de exemplo'),
-                ),
-              ],
-              if (demoRoute)
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text(
-                    'Usar rota simulada',
-                    style: TextStyle(fontSize: 13),
-                  ),
-                  subtitle: const Text(
-                    'Desative para consultar o trajeto real.',
-                    style: TextStyle(fontSize: 11),
-                  ),
-                  value: demoRoute,
-                  onChanged:
-                      (v) => setState(() {
-                        demoRoute = v;
-                        result = null;
-                      }),
-                ),
               const SizedBox(height: 18),
               const Divider(),
               const SizedBox(height: 22),

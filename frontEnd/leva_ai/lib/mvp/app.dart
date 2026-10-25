@@ -141,11 +141,8 @@ class _LevaAiMvpState extends State<LevaAiMvp> {
     final data = await Navigator.of(context).push<Json>(
       MaterialPageRoute(
         builder:
-            (c) => AuthPage(
-              api: api,
-              demo: config!['demo'] == true,
-              onAuthenticated: (d) => Navigator.pop(c, d),
-            ),
+            (c) =>
+                AuthPage(api: api, onAuthenticated: (d) => Navigator.pop(c, d)),
       ),
     );
     if (data == null || !mounted) return false;
@@ -345,10 +342,6 @@ class _LevaAiMvpState extends State<LevaAiMvp> {
                   icon: const Icon(Icons.logout),
                   label: const Text('Sair da conta'),
                 ),
-                if (config!['demo'] == true)
-                  const Notice(
-                    'Para testar os dois lados do serviço, saia e entre com a conta de demonstração do outro perfil. Os pedidos ficam salvos.',
-                  ),
               ],
             ),
           ),
@@ -425,24 +418,6 @@ class _LevaAiMvpState extends State<LevaAiMvp> {
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       const Spacer(),
-                      if (config!['demo'] == true)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFF5DA),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Text(
-                            'Demonstração',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Color(0xFF856219),
-                            ),
-                          ),
-                        ),
                       const SizedBox(width: 16),
                       if (user == null)
                         TextButton(
@@ -496,16 +471,10 @@ class _LevaAiMvpState extends State<LevaAiMvp> {
 /// Tela de acesso e criação de conta, usada antes da área protegida.
 class AuthPage extends StatefulWidget {
   final Api api;
-  final bool demo;
   final ValueChanged<Json> onAuthenticated;
 
   /// Recebe as dependências e a ação chamada após o login ou cadastro.
-  const AuthPage({
-    super.key,
-    required this.api,
-    required this.demo,
-    required this.onAuthenticated,
-  });
+  const AuthPage({super.key, required this.api, required this.onAuthenticated});
   @override
   State<AuthPage> createState() => _AuthPageState();
 }
@@ -573,18 +542,6 @@ class _AuthPageState extends State<AuthPage> {
     } finally {
       if (mounted) setState(() => loading = false);
     }
-  }
-
-  /// Preenche e envia uma conta de demonstração para a apresentação do MVP.
-  void demo(String profile) {
-    setState(() {
-      register = false;
-      email.text = '$profile@levaai.demo';
-      password.text = 'LevaAi@123';
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) submit();
-    });
   }
 
   @override
@@ -844,46 +801,6 @@ class _AuthPageState extends State<AuthPage> {
                                   : 'Ainda não tem conta? Cadastre-se',
                             ),
                           ),
-                        if (widget.demo) ...[
-                          const SizedBox(height: 18),
-                          const Divider(),
-                          const SizedBox(height: 14),
-                          const Text(
-                            'EXPLORE O MVP',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 10,
-                              letterSpacing: 1.8,
-                              color: muted,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed:
-                                      loading ? null : () => demo('cliente'),
-                                  child: const Text('Testar cliente'),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed:
-                                      loading ? null : () => demo('prestador'),
-                                  child: const Text('Testar prestador'),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Contas de exemplo • Nenhum pagamento real',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 11, color: muted),
-                          ),
-                        ],
                       ],
                     ),
                   ),

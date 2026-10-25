@@ -391,6 +391,42 @@ export function createApi(db, config) {
     );
     return aid;
   }
+  /** Registra e envia o aviso de uma nova proposta ao prestador selecionado. */
+  async function notifyProviderOfRequest({
+    providerId,
+    requestId,
+    input,
+    totalCents,
+  }) {
+    const provider = await one(
+      "SELECT nome,email FROM public.usuarios WHERE id=$1 AND ativo",
+      [providerId],
+    );
+    if (!provider) return;
+    const total = new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(totalCents / 100);
+    await db.query(
+      "INSERT INTO public.notificacoes(usuario_id,tipo,titulo,mensagem) VALUES($1,'status_solicitacao',$2,$3)",
+      [
+        providerId,
+        "Nova solicitação recebida",
+        `Há uma nova solicitação de ${input.type} para ${input.date}, no valor estimado de ${total}.`,
+      ],
+    );
+    if (!config.resendToken || !config.mailFrom) return;
+    try {
+      await sendEmail(config, {
+        to: [provider.email],
+        subject: "Nova solicitação para você no LevaAí",
+        text: `Olá, ${provider.nome}. Você recebeu uma nova solicitação de ${input.type} para ${input.date}. Valor estimado: ${total}. Entre no LevaAí para aceitar ou recusar a proposta. Protocolo: ${requestId}.`,
+      });
+    } catch (error) {
+      // A proposta é persistida mesmo se o provedor de e-mail estiver indisponível.
+      console.warn("Falha ao notificar prestador", error?.message);
+    }
+  }
   return {
     /** Encaminha cada rota do contrato HTTP para a regra de negócio correspondente. */
     async handle({ method, path, url, body = {}, authorization }) {
@@ -801,6 +837,12 @@ export function createApi(db, config) {
           sid,
         ]);
         await change(s, s.status, u);
+        await notifyProviderOfRequest({
+          providerId: v.provider_id,
+          requestId: sid,
+          input,
+          totalCents: d.totalCents,
+        });
         return details(s);
       }
       if (method === "GET" && path === "/api/bookings") {

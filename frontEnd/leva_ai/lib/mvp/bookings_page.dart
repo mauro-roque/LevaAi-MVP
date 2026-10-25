@@ -450,7 +450,7 @@ class _BookingsPageState extends State<BookingsPage> {
             Padding(
               padding: const EdgeInsets.only(top: 12),
               child: Text(
-                'Pix ${payment['gateway'] == 'demo' ? '(simulado) ' : ''}• ${payment['status']}',
+                'Pix • ${payment['status']}',
                 style: const TextStyle(
                   color: blue,
                   fontSize: 12,
@@ -516,52 +516,41 @@ class _BookingsPageState extends State<BookingsPage> {
           if (!widget.provider &&
               payment != null &&
               status == 'pagamento_pendente') ...[
-            if (payment['gateway'] == 'demo') ...[
-              const Notice(
-                'Pix de demonstração: nenhuma cobrança foi gerada. O botão abaixo simula a confirmação do pagamento.',
+            const Notice(
+              'Pague pelo aplicativo do seu banco e consulte a confirmação abaixo.',
+            ),
+            if ((payment['data']['qrImage'] as String).isNotEmpty)
+              Image.memory(
+                base64Decode(payment['data']['qrImage']),
+                width: 220,
+                height: 220,
               ),
-              FilledButton.icon(
-                onPressed: loading ? null : () => action(b, 'demo-pay'),
-                icon: const Icon(Icons.science_outlined),
-                label: const Text('Simular pagamento aprovado'),
+            if ((payment['data']['qrCode'] as String).isNotEmpty) ...[
+              SelectableText(
+                payment['data']['qrCode'],
+                style: const TextStyle(fontSize: 11),
               ),
-            ] else ...[
-              const Notice(
-                'Pague pelo aplicativo do seu banco e consulte a confirmação abaixo.',
-              ),
-              if ((payment['data']['qrImage'] as String).isNotEmpty)
-                Image.memory(
-                  base64Decode(payment['data']['qrImage']),
-                  width: 220,
-                  height: 220,
-                ),
-              if ((payment['data']['qrCode'] as String).isNotEmpty) ...[
-                SelectableText(
-                  payment['data']['qrCode'],
-                  style: const TextStyle(fontSize: 11),
-                ),
-                const SizedBox(height: 10),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    await Clipboard.setData(
-                      ClipboardData(text: payment['data']['qrCode']),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  await Clipboard.setData(
+                    ClipboardData(text: payment['data']['qrCode']),
+                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Código Pix copiado.')),
                     );
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Código Pix copiado.')),
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.copy, size: 17),
-                  label: const Text('Copiar código Pix'),
-                ),
-              ],
-              const SizedBox(height: 12),
-              FilledButton(
-                onPressed: loading ? null : () => action(b, 'payment-check'),
-                child: const Text('Consultar pagamento'),
+                  }
+                },
+                icon: const Icon(Icons.copy, size: 17),
+                label: const Text('Copiar código Pix'),
               ),
             ],
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: loading ? null : () => action(b, 'payment-check'),
+              child: const Text('Consultar pagamento'),
+            ),
           ],
           if (b['review'] != null)
             Notice(

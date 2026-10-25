@@ -54,7 +54,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: appTheme(),
-        home: AuthPage(api: api, demo: true, onAuthenticated: (_) {}),
+        home: AuthPage(api: api, onAuthenticated: (_) {}),
       ),
     );
     await tester.pumpAndSettle();
@@ -111,7 +111,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: appTheme(),
-          home: AuthPage(api: api, demo: true, onAuthenticated: (_) {}),
+          home: AuthPage(api: api, onAuthenticated: (_) {}),
         ),
       );
       await tester.pumpAndSettle();

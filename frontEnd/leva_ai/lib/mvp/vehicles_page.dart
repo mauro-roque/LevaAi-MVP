@@ -393,17 +393,6 @@ class _VehicleEditorState extends State<VehicleEditor> {
                   value: base,
                   onChanged: (v) => setState(() => base = v),
                 ),
-                if (widget.config['demo'] == true)
-                  TextButton(
-                    onPressed:
-                        () => setState(
-                          () =>
-                              base = Map<String, dynamic>.from(
-                                widget.config['demoPlaces'][0],
-                              ),
-                        ),
-                    child: const Text('Usar base de exemplo: São Paulo'),
-                  ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Veículo ativo'),

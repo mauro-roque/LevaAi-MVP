@@ -263,7 +263,7 @@ test("modelo original: busca visitante, autorização, reserva, Pix, estados e a
       resendToken: "test",
       mailFrom: "noreply@example.com",
     });
-    const secureCall = async (path, body) => {
+    const secureCall = async (path, body, token) => {
       await pg.exec("BEGIN");
       try {
         const result = await secureApi.handle({
@@ -271,6 +271,7 @@ test("modelo original: busca visitante, autorização, reserva, Pix, estados e a
           path: "/api" + path,
           url: new URL("https://test/api" + path),
           body,
+          authorization: token ? `Bearer ${token}` : undefined,
         });
         await pg.exec("COMMIT");
         return result;
@@ -295,6 +296,15 @@ test("modelo original: busca visitante, autorização, reserva, Pix, estados e a
       password: "SenhaForte123",
     });
     assert.equal(verified.user.email, "confirmar@example.com");
+    emailBody = "";
+    const secureQuotes = await secureCall("/quotes", input, verified.token);
+    const notifiedBooking = await secureCall(
+      "/bookings",
+      { quoteId: secureQuotes.quotes[0].id },
+      verified.token,
+    );
+    assert.equal(notifiedBooking.status, "aguardando_prestador");
+    assert.match(emailBody, /nova solicita..o/i);
     globalThis.fetch = originalFetch;
     await assert.rejects(
       () =>
