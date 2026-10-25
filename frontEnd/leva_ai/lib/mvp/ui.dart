@@ -612,7 +612,7 @@ class _CitySearchSheetState extends State<_CitySearchSheet> {
               onSubmitted: (_) => search(),
               decoration: InputDecoration(
                 labelText: 'Cidade',
-                hintText: 'Ex.: Piraju, SP',
+                hintText: 'Ex.: São Paulo, SP',
                 prefixIcon: const Icon(Icons.location_city_outlined),
                 suffixIcon:
                     loading
