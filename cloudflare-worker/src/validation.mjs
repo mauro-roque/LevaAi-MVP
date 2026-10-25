@@ -20,6 +20,17 @@ export function text(value, label, min = 1, max = 200) {
   );
   return value.trim();
 }
+/** Exige uma senha longa com letras maiúsculas, minúsculas e números. */
+export function password(value, label = "Senha") {
+  const normalized = text(value, label, 12, 128);
+  ensure(
+    /[a-z]/.test(normalized) &&
+      /[A-Z]/.test(normalized) &&
+      /\d/.test(normalized),
+    `${label}: use ao menos uma letra maiúscula, uma minúscula e um número.`,
+  );
+  return normalized;
+}
 /** Aceita somente números dentro dos limites do domínio do MVP. */
 export function number(value, label, min, max, integer = false) {
   ensure(

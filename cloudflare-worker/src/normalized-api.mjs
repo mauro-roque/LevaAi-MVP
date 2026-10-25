@@ -10,6 +10,7 @@ import {
   AppError,
   ensure,
   text,
+  password as validPassword,
   number,
   serviceInput,
   vehicleInput,
@@ -405,7 +406,7 @@ export function createApi(db, config) {
       if (method === "POST" && path === "/api/auth/register") {
         const name = text(body.name, "Nome", 2, 150),
           email = text(body.email, "E-mail", 5, 150).toLowerCase(),
-          password = text(body.password, "Senha", 8, 128),
+          password = validPassword(body.password),
           phone = text(body.phone, "Telefone", 10, 20);
         ensure(
           /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
@@ -546,7 +547,7 @@ export function createApi(db, config) {
       }
       if (method === "POST" && path === "/api/auth/reset") {
         const token = text(body.code, "Código", 30, 150),
-          password = text(body.password, "Senha", 8, 128);
+          password = validPassword(body.password);
         const reset = await one(
           "DELETE FROM leva_ai_private.recuperacoes WHERE token_hash=$1 AND expira_em>now() RETURNING usuario_id",
           [await digest(token)],

@@ -235,6 +235,20 @@ test("modelo original: busca visitante, autorização, reserva, Pix, estados e a
       },
     });
     assert.equal(newUser.user.role, "cliente");
+    await assert.rejects(
+      () =>
+        call("/auth/register", {
+          method: "POST",
+          body: {
+            name: "Senha Fraca",
+            email: "fraca@example.com",
+            password: "12345678",
+            phone: "11955550002",
+            role: "cliente",
+          },
+        }),
+      (error) => error.status === 400,
+    );
     let emailBody = "";
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async (_url, options) => {

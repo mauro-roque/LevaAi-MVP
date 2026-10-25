@@ -785,8 +785,19 @@ class _AuthPageState extends State<AuthPage> {
                           ),
                           validator:
                               (v) =>
-                                  (v?.length ?? 0) < (register ? 8 : 1)
-                                      ? 'Use ${register ? 8 : 1} ou mais caracteres.'
+                                  register && (v?.length ?? 0) < 12
+                                      ? 'Use ao menos 12 caracteres.'
+                                      : register &&
+                                              !RegExp(
+                                                r'[a-z]',
+                                              ).hasMatch(v ?? '') ||
+                                          register &&
+                                              !RegExp(
+                                                r'[A-Z]',
+                                              ).hasMatch(v ?? '') ||
+                                          register &&
+                                              !RegExp(r'\\d').hasMatch(v ?? '')
+                                      ? 'Inclua letra maiúscula, minúscula e número.'
                                       : null,
                         ),
                         if (error != null) Notice(error!, error: true),
