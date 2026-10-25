@@ -445,6 +445,223 @@ class _AddressFieldState extends State<AddressField> {
   );
 }
 
+/// Seletor compacto que abre uma busca de cidade sem sobrecarregar o formulário.
+class CityPicker extends StatefulWidget {
+  final Api api;
+  final String label;
+  final Json? value;
+  final ValueChanged<Json?> onChanged;
+
+  /// Recebe o ponto da cidade escolhido para restringir a busca do endereço.
+  const CityPicker({
+    super.key,
+    required this.api,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  State<CityPicker> createState() => _CityPickerState();
+}
+
+/// Abre o modal de cidades e comunica a seleção à tela que monta a rota.
+class _CityPickerState extends State<CityPicker> {
+  /// Exibe a pesquisa em uma folha modal para preservar a leitura do formulário.
+  Future<void> pickCity() async {
+    final city = await showModalBottomSheet<Json>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _CitySearchSheet(api: widget.api, label: widget.label),
+    );
+    if (city != null) widget.onChanged(city);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = widget.value?['label'] as String?;
+    return OutlinedButton.icon(
+      onPressed: pickCity,
+      icon: Icon(
+        selected == null ? Icons.location_city_outlined : Icons.check_circle,
+        color: selected == null ? blue : Colors.teal,
+      ),
+      label: Align(
+        alignment: Alignment.centerLeft,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(widget.label, style: const TextStyle(fontSize: 12)),
+            Text(
+              selected ?? 'Selecionar cidade',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontWeight:
+                    selected == null ? FontWeight.w500 : FontWeight.w700,
+                color: selected == null ? ink : Colors.teal.shade800,
+              ),
+            ),
+          ],
+        ),
+      ),
+      style: OutlinedButton.styleFrom(
+        alignment: Alignment.centerLeft,
+        minimumSize: const Size.fromHeight(58),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        side: BorderSide(
+          color: selected == null ? const Color(0xFFD2DCEA) : Colors.teal,
+        ),
+      ),
+    );
+  }
+}
+
+/// Busca cidades brasileiras em um painel focado antes da busca de endereços.
+class _CitySearchSheet extends StatefulWidget {
+  final Api api;
+  final String label;
+
+  const _CitySearchSheet({required this.api, required this.label});
+
+  @override
+  State<_CitySearchSheet> createState() => _CitySearchSheetState();
+}
+
+/// Controla a consulta com atraso curto para respeitar o serviço de mapas.
+class _CitySearchSheetState extends State<_CitySearchSheet> {
+  final controller = TextEditingController();
+  final focus = FocusNode();
+  Timer? debounce;
+  List<dynamic> results = [];
+  bool loading = false;
+  String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => focus.requestFocus());
+  }
+
+  @override
+  void dispose() {
+    debounce?.cancel();
+    controller.dispose();
+    focus.dispose();
+    super.dispose();
+  }
+
+  /// Pesquisa municípios no Brasil e mostra opções geocodificadas ao usuário.
+  Future<void> search() async {
+    if (loading || controller.text.trim().length < 3) return;
+    setState(() {
+      loading = true;
+      error = null;
+      results = [];
+    });
+    try {
+      final cityQuery = '${controller.text.trim()}, Brasil';
+      final found =
+          await widget.api.call(
+                '/maps/search?q=${Uri.encodeQueryComponent(cityQuery)}',
+              )
+              as List;
+      if (mounted) {
+        setState(() {
+          results = found;
+          if (found.isEmpty) error = 'Não encontramos esta cidade.';
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => error = e.toString());
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    child: Padding(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        4,
+        20,
+        MediaQuery.viewInsetsOf(context).bottom + 20,
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 540),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.label, style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 6),
+            const Text('Digite a cidade e, se necessário, o estado.'),
+            const SizedBox(height: 18),
+            TextField(
+              controller: controller,
+              focusNode: focus,
+              onChanged: (_) {
+                debounce?.cancel();
+                if (controller.text.trim().length >= 3) {
+                  debounce = Timer(const Duration(milliseconds: 450), search);
+                }
+              },
+              onSubmitted: (_) => search(),
+              decoration: InputDecoration(
+                labelText: 'Cidade',
+                hintText: 'Ex.: Piraju, SP',
+                prefixIcon: const Icon(Icons.location_city_outlined),
+                suffixIcon:
+                    loading
+                        ? const Padding(
+                          padding: EdgeInsets.all(15),
+                          child: SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                        : IconButton(
+                          tooltip: 'Buscar cidade',
+                          onPressed: search,
+                          icon: const Icon(Icons.search),
+                        ),
+              ),
+            ),
+            if (error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  error!,
+                  style: TextStyle(color: Colors.red.shade700, fontSize: 12),
+                ),
+              ),
+            const SizedBox(height: 10),
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: results.length,
+                separatorBuilder: (_, _) => const Divider(height: 1),
+                itemBuilder: (_, index) {
+                  final city = Map<String, dynamic>.from(results[index]);
+                  return ListTile(
+                    leading: const Icon(Icons.location_city_outlined),
+                    title: Text(city['label'], maxLines: 2),
+                    onTap: () => Navigator.pop(context, city),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 /// Cria o título e o texto de apoio padrão das seções de uma página.
 Widget sectionTitle(BuildContext context, String title, String subtitle) =>
     Padding(

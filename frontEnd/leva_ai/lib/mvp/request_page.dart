@@ -478,15 +478,50 @@ class _RequestPageState extends State<RequestPage> {
                     ),
                   ],
                 ),
-              AddressField(
-                api: widget.api,
-                label: 'Cidade de origem',
-                hintText: 'Digite a cidade e o estado',
-                minimumQueryLength: 3,
-                value: originCity,
-                onChanged: (v) => updateCity(true, v),
+              Text(
+                'Cidades do trajeto',
+                style: Theme.of(
+                  context,
+                ).textTheme.labelLarge?.copyWith(color: muted),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final wide = constraints.maxWidth >= 620;
+                  final originPicker = CityPicker(
+                    api: widget.api,
+                    label: 'Cidade de origem',
+                    value: originCity,
+                    onChanged: (v) => updateCity(true, v),
+                  );
+                  final destinationPicker = CityPicker(
+                    api: widget.api,
+                    label: 'Cidade de destino',
+                    value: destinationCity,
+                    onChanged: (v) => updateCity(false, v),
+                  );
+                  if (wide) {
+                    return Row(
+                      children: [
+                        Expanded(child: originPicker),
+                        const SizedBox(width: 12),
+                        Expanded(child: destinationPicker),
+                      ],
+                    );
+                  }
+                  return Column(
+                    children: [
+                      SizedBox(width: double.infinity, child: originPicker),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: destinationPicker,
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 14),
               AddressField(
                 api: widget.api,
                 label: 'Endereço de origem',
@@ -496,15 +531,6 @@ class _RequestPageState extends State<RequestPage> {
                 onChanged: (v) => updateAddress(true, v),
               ),
               const SizedBox(height: 16),
-              AddressField(
-                api: widget.api,
-                label: 'Cidade de destino',
-                hintText: 'Digite a cidade e o estado',
-                minimumQueryLength: 3,
-                value: destinationCity,
-                onChanged: (v) => updateCity(false, v),
-              ),
-              const SizedBox(height: 12),
               AddressField(
                 api: widget.api,
                 label: 'Endereço de destino',
