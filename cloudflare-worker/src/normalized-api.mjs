@@ -457,35 +457,46 @@ export function createApi(db, config) {
           ["cliente", "prestador"].includes(body.role),
           "Escolha seu perfil.",
         );
+        const existing = await one(
+          "SELECT id,senha_hash,email_verificado FROM public.usuarios WHERE lower(email)=$1",
+          [email],
+        );
         ensure(
-          !(await one("SELECT id FROM public.usuarios WHERE lower(email)=$1", [
-            email,
-          ])),
+          !existing || !existing.email_verificado,
           "Este e-mail já está cadastrado.",
           409,
         );
-        const uid = id();
-        await db.query(
-          "INSERT INTO public.usuarios(id,nome,email,senha_hash,tipo,telefone,email_verificado) VALUES($1,$2,$3,$4,$5,$6,$7)",
-          [
-            uid,
-            name,
-            email,
-            await hashPassword(password),
-            body.role,
-            phone,
-            !config.emailVerificationRequired,
-          ],
-        );
-        if (body.role === "cliente")
-          await db.query("INSERT INTO public.clientes(usuario_id) VALUES($1)", [
-            uid,
-          ]);
-        else
-          await db.query(
-            "INSERT INTO public.prestadores(usuario_id) VALUES($1)",
-            [uid],
+        if (existing)
+          ensure(
+            await verifyPassword(password, existing.senha_hash),
+            "Este e-mail possui um cadastro pendente. Informe a mesma senha para reenviar a confirmação.",
+            401,
           );
+        const uid = existing?.id || id();
+        if (!existing) {
+          await db.query(
+            "INSERT INTO public.usuarios(id,nome,email,senha_hash,tipo,telefone,email_verificado) VALUES($1,$2,$3,$4,$5,$6,$7)",
+            [
+              uid,
+              name,
+              email,
+              await hashPassword(password),
+              body.role,
+              phone,
+              !config.emailVerificationRequired,
+            ],
+          );
+          if (body.role === "cliente")
+            await db.query(
+              "INSERT INTO public.clientes(usuario_id) VALUES($1)",
+              [uid],
+            );
+          else
+            await db.query(
+              "INSERT INTO public.prestadores(usuario_id) VALUES($1)",
+              [uid],
+            );
+        }
         if (!config.emailVerificationRequired)
           return session(await one(userSql + " WHERE u.id=$1", [uid]));
         const token = id() + id();

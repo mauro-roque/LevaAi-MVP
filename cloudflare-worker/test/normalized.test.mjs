@@ -290,7 +290,18 @@ test("modelo original: busca visitante, autorização, reserva, Pix, estados e a
     assert.equal(pending.pendingVerification, true);
     const code = emailBody.match(/([0-9a-f-]{72})/i)?.[1];
     assert.ok(code);
-    await secureCall("/auth/verify-email", { code });
+    const resent = await secureCall("/auth/register", {
+      name: "Conta Confirmada",
+      email: "confirmar@example.com",
+      password: "SenhaForte123",
+      phone: "11955550001",
+      role: "cliente",
+    });
+    assert.equal(resent.pendingVerification, true);
+    const resentCode = emailBody.match(/([0-9a-f-]{72})/i)?.[1];
+    assert.ok(resentCode);
+    assert.notEqual(resentCode, code);
+    await secureCall("/auth/verify-email", { code: resentCode });
     const verified = await secureCall("/auth/login", {
       email: "confirmar@example.com",
       password: "SenhaForte123",

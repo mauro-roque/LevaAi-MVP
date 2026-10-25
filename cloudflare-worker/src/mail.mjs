@@ -15,11 +15,19 @@ export async function sendEmail(config, message) {
     },
     body: JSON.stringify({ from: config.mailFrom, ...message }),
   });
-  if (!response.ok)
+  if (!response.ok) {
+    const detail = await response.text();
+    const isTestingRestriction =
+      response.status === 403 && /testing domain restriction/i.test(detail);
     throw Object.assign(
-      new Error("Não foi possível enviar o e-mail. Tente novamente."),
+      new Error(
+        isTestingRestriction
+          ? "O e-mail está em modo de teste. Para enviar a outros endereços, configure um domínio verificado no Resend."
+          : "Não foi possível enviar o e-mail. Tente novamente.",
+      ),
       {
         status: 503,
       },
     );
+  }
 }
