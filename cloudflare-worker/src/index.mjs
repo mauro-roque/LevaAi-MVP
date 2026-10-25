@@ -123,6 +123,7 @@ export function createWorker(databaseFactory = openDatabase) {
           return Response.json(
             {
               demo: config.demo,
+              demoVerificationCode: config.demoVerificationCode,
               demoPlaces: config.demo ? demoPlaces : [],
               paymentMode: config.demo ? "demo" : "mercado_pago",
             },

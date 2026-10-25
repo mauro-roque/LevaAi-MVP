@@ -504,7 +504,7 @@ export function createApi(db, config) {
         }
         if (!config.emailVerificationRequired)
           return session(await one(userSql + " WHERE u.id=$1", [uid]));
-        const token = numericCode();
+        const token = config.demoVerificationCode || numericCode();
         await db.query(
           "DELETE FROM leva_ai_private.verificacoes_email WHERE usuario_id=$1",
           [uid],
@@ -517,22 +517,33 @@ export function createApi(db, config) {
             new Date(Date.now() + 86400000).toISOString(),
           ],
         );
-        await sendEmail(config, {
-          to: [email],
-          subject: "Confirme seu cadastro no LevaAí",
-          text: `Olá, ${name}. Use este código para confirmar seu cadastro: ${token}. Ele expira em 24 horas.`,
-        });
+        if (!config.demoVerificationCode)
+          await sendEmail(config, {
+            to: [email],
+            subject: "Confirme seu cadastro no LevaAí",
+            text: `Olá, ${name}. Use este código para confirmar seu cadastro: ${token}. Ele expira em 24 horas.`,
+          });
         return {
           pendingVerification: true,
-          message: "Enviamos um código de confirmação para seu e-mail.",
+          message: config.demoVerificationCode
+            ? "Modo de demonstração ativo. Use o código informado na tela para confirmar."
+            : "Enviamos um código de confirmação para seu e-mail.",
         };
       }
       if (method === "POST" && path === "/api/auth/verify-email") {
-        const token = text(body.code, "Código", 6, 6);
-        ensure(/^\d{6}$/.test(token), "Informe os 6 dígitos do código.");
+        const token = text(body.code, "Código", 3, 6);
+        const email = text(body.email, "E-mail", 5, 150).toLowerCase();
+        ensure(
+          config.demoVerificationCode
+            ? token === config.demoVerificationCode
+            : /^\d{6}$/.test(token),
+          config.demoVerificationCode
+            ? "Informe o código de demonstração correto."
+            : "Informe os 6 dígitos do código.",
+        );
         const verification = await one(
-          "DELETE FROM leva_ai_private.verificacoes_email WHERE token_hash=$1 AND expira_em>now() RETURNING usuario_id",
-          [await digest(token)],
+          "DELETE FROM leva_ai_private.verificacoes_email v USING public.usuarios u WHERE v.token_hash=$1 AND v.expira_em>now() AND u.id=v.usuario_id AND lower(u.email)=$2 RETURNING v.usuario_id",
+          [await digest(token), email],
         );
         ensure(verification, "Código inválido ou expirado.", 400);
         await db.query(

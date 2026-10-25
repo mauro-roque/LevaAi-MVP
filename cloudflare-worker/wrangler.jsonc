@@ -6,6 +6,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
     "DEMO_MODE": "false",
+    "DEMO_VERIFICATION_CODE": "abc",
     "EMAIL_VERIFICATION_REQUIRED": "true",
     "MAIL_FROM": "onboarding@resend.dev",
     "ALLOWED_ORIGINS": "https://leva-ai-platform.mauroroqueestudos.workers.dev",

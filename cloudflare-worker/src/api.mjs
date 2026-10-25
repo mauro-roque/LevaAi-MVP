@@ -39,6 +39,7 @@ const decoded = (row) =>
 /** Lê as variáveis do Worker e devolve a configuração validada da API. */
 export function configuration(env) {
   const demo = env.DEMO_MODE !== "false";
+  const demoVerificationCode = env.DEMO_VERIFICATION_CODE || null;
   ensure(
     typeof env.JWT_SECRET === "string" && env.JWT_SECRET.length >= 32,
     "JWT_SECRET precisa ter pelo menos 32 caracteres.",
@@ -47,6 +48,7 @@ export function configuration(env) {
   const emailVerificationRequired = env.EMAIL_VERIFICATION_REQUIRED === "true";
   ensure(
     !emailVerificationRequired ||
+      demoVerificationCode ||
       (typeof env.RESEND_API_KEY === "string" &&
         typeof env.MAIL_FROM === "string"),
     "A confirmação de e-mail exige RESEND_API_KEY e MAIL_FROM configurados.",
@@ -63,6 +65,7 @@ export function configuration(env) {
     mailFrom: env.MAIL_FROM,
     appOrigin: env.APP_ORIGIN,
     emailVerificationRequired,
+    demoVerificationCode,
     allowedOrigins: String(env.ALLOWED_ORIGINS || "")
       .split(",")
       .map((origin) => origin.trim())

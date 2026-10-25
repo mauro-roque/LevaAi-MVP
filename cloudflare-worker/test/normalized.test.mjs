@@ -301,12 +301,48 @@ test("modelo original: busca visitante, autorização, reserva, Pix, estados e a
     const resentCode = emailBody.match(/\b(\d{6})\b/)?.[1];
     assert.ok(resentCode);
     assert.notEqual(resentCode, code);
-    await secureCall("/auth/verify-email", { code: resentCode });
+    await secureCall("/auth/verify-email", {
+      code: resentCode,
+      email: "confirmar@example.com",
+    });
     const verified = await secureCall("/auth/login", {
       email: "confirmar@example.com",
       password: "SenhaForte123",
     });
     assert.equal(verified.user.email, "confirmar@example.com");
+    const demoApi = createApi(db, {
+      ...cfg,
+      emailVerificationRequired: true,
+      demoVerificationCode: "abc",
+    });
+    const demoCall = async (path, body) => {
+      await pg.exec("BEGIN");
+      try {
+        const result = await demoApi.handle({
+          method: "POST",
+          path: "/api" + path,
+          url: new URL("https://test/api" + path),
+          body,
+        });
+        await pg.exec("COMMIT");
+        return result;
+      } catch (error) {
+        await pg.exec("ROLLBACK");
+        throw error;
+      }
+    };
+    const demoPending = await demoCall("/auth/register", {
+      name: "Conta Demonstração",
+      email: "demonstracao@example.com",
+      password: "SenhaForte123",
+      phone: "11955550003",
+      role: "cliente",
+    });
+    assert.equal(demoPending.pendingVerification, true);
+    await demoCall("/auth/verify-email", {
+      code: "abc",
+      email: "demonstracao@example.com",
+    });
     emailBody = "";
     const secureQuotes = await secureCall("/quotes", input, verified.token);
     const notifiedBooking = await secureCall(

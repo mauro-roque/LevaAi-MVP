@@ -143,7 +143,11 @@ class _LevaAiMvpState extends State<LevaAiMvp> {
       MaterialPageRoute(
         builder:
             (c) =>
-                AuthPage(api: api, onAuthenticated: (d) => Navigator.pop(c, d)),
+                AuthPage(
+                  api: api,
+                  demoVerificationCode: config?['demoVerificationCode'],
+                  onAuthenticated: (d) => Navigator.pop(c, d),
+                ),
       ),
     );
     if (data == null || !mounted) return false;
@@ -473,9 +477,15 @@ class _LevaAiMvpState extends State<LevaAiMvp> {
 class AuthPage extends StatefulWidget {
   final Api api;
   final ValueChanged<Json> onAuthenticated;
+  final String? demoVerificationCode;
 
   /// Recebe as dependências e a ação chamada após o login ou cadastro.
-  const AuthPage({super.key, required this.api, required this.onAuthenticated});
+  const AuthPage({
+    super.key,
+    required this.api,
+    required this.onAuthenticated,
+    this.demoVerificationCode,
+  });
   @override
   State<AuthPage> createState() => _AuthPageState();
 }
@@ -520,7 +530,10 @@ class _AuthPageState extends State<AuthPage> {
         method: 'POST',
         body:
             pendingVerification
-                ? {'code': verificationCode.text.trim()}
+                ? {
+                    'code': verificationCode.text.trim(),
+                    'email': email.text.trim(),
+                  }
                 : {
                   'email': email.text.trim(),
                   'password': password.text,
@@ -646,7 +659,9 @@ class _AuthPageState extends State<AuthPage> {
                         const SizedBox(height: 10),
                         Text(
                           pendingVerification
-                              ? 'Enviamos um código para ${email.text.trim()}.'
+                              ? widget.demoVerificationCode != null
+                                  ? 'Modo de demonstração: use o código ${widget.demoVerificationCode}.'
+                                  : 'Enviamos um código para ${email.text.trim()}.'
                               : register
                               ? 'Crie sua conta e escolha como quer usar o LevaAí.'
                               : 'Entre para continuar. Sua busca está salva.',
@@ -656,17 +671,25 @@ class _AuthPageState extends State<AuthPage> {
                         if (pendingVerification) ...[
                           TextFormField(
                             controller: verificationCode,
-                            keyboardType: TextInputType.number,
+                            keyboardType:
+                                widget.demoVerificationCode != null
+                                    ? TextInputType.text
+                                    : TextInputType.number,
                             inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
                               LengthLimitingTextInputFormatter(6),
+                              if (widget.demoVerificationCode == null)
+                                FilteringTextInputFormatter.digitsOnly,
                             ],
                             decoration: const InputDecoration(
                               labelText: 'Código de confirmação',
                               prefixIcon: Icon(Icons.verified_user_outlined),
                             ),
                             validator:
-                                (v) => RegExp(r'^\d{6}$').hasMatch(v?.trim() ?? '')
+                                (v) => widget.demoVerificationCode != null
+                                    ? (v?.trim() == widget.demoVerificationCode
+                                          ? null
+                                          : 'Use o código de demonstração informado acima.')
+                                    : RegExp(r'^\d{6}$').hasMatch(v?.trim() ?? '')
                                     ? null
                                     : 'Informe os 6 dígitos recebidos por e-mail.',
                           ),
