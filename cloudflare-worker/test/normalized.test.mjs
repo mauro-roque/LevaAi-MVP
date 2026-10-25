@@ -288,7 +288,7 @@ test("modelo original: busca visitante, autorização, reserva, Pix, estados e a
       role: "cliente",
     });
     assert.equal(pending.pendingVerification, true);
-    const code = emailBody.match(/([0-9a-f-]{72})/i)?.[1];
+    const code = emailBody.match(/\b(\d{6})\b/)?.[1];
     assert.ok(code);
     const resent = await secureCall("/auth/register", {
       name: "Conta Confirmada",
@@ -298,7 +298,7 @@ test("modelo original: busca visitante, autorização, reserva, Pix, estados e a
       role: "cliente",
     });
     assert.equal(resent.pendingVerification, true);
-    const resentCode = emailBody.match(/([0-9a-f-]{72})/i)?.[1];
+    const resentCode = emailBody.match(/\b(\d{6})\b/)?.[1];
     assert.ok(resentCode);
     assert.notEqual(resentCode, code);
     await secureCall("/auth/verify-email", { code: resentCode });

@@ -94,6 +94,11 @@ const digest = async (value) =>
   )
     .map((n) => n.toString(16).padStart(2, "0"))
     .join("");
+/** Gera um código numérico curto, imprevisível e apropriado para digitação. */
+const numericCode = () => {
+  const value = crypto.getRandomValues(new Uint32Array(1))[0];
+  return String(100000 + (value % 900000));
+};
 
 export async function seed(db) {
   // Seed explícito, transacional e serializado. Nunca rodar em ambiente real.
@@ -499,7 +504,7 @@ export function createApi(db, config) {
         }
         if (!config.emailVerificationRequired)
           return session(await one(userSql + " WHERE u.id=$1", [uid]));
-        const token = id() + id();
+        const token = numericCode();
         await db.query(
           "DELETE FROM leva_ai_private.verificacoes_email WHERE usuario_id=$1",
           [uid],
@@ -523,7 +528,8 @@ export function createApi(db, config) {
         };
       }
       if (method === "POST" && path === "/api/auth/verify-email") {
-        const token = text(body.code, "Código", 30, 150);
+        const token = text(body.code, "Código", 6, 6);
+        ensure(/^\d{6}$/.test(token), "Informe os 6 dígitos do código.");
         const verification = await one(
           "DELETE FROM leva_ai_private.verificacoes_email WHERE token_hash=$1 AND expira_em>now() RETURNING usuario_id",
           [await digest(token)],
@@ -563,7 +569,7 @@ export function createApi(db, config) {
           [email],
         );
         if (user) {
-          const token = id() + id();
+          const token = numericCode();
           const hashed = await digest(token);
           await db.query(
             "DELETE FROM leva_ai_private.recuperacoes WHERE usuario_id=$1",
@@ -598,8 +604,9 @@ export function createApi(db, config) {
         };
       }
       if (method === "POST" && path === "/api/auth/reset") {
-        const token = text(body.code, "Código", 30, 150),
+        const token = text(body.code, "Código", 6, 6),
           password = validPassword(body.password);
+        ensure(/^\d{6}$/.test(token), "Informe os 6 dígitos do código.");
         const reset = await one(
           "DELETE FROM leva_ai_private.recuperacoes WHERE token_hash=$1 AND expira_em>now() RETURNING usuario_id",
           [await digest(token)],

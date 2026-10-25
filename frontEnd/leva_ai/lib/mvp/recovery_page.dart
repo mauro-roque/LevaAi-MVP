@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'api.dart';
 import 'ui.dart';
 
@@ -92,6 +93,11 @@ class _RecoveryPageState extends State<RecoveryPage> {
                 if (sent) ...[
                   TextField(
                     controller: code,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(6),
+                    ],
                     decoration: const InputDecoration(
                       labelText: 'Código recebido por e-mail',
                     ),

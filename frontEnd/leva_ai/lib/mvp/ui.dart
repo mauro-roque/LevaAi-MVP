@@ -229,39 +229,52 @@ class StatusBadge extends StatelessWidget {
 class Notice extends StatelessWidget {
   final String message;
   final bool error;
+  final bool success;
 
   /// Exibe uma mensagem com estilo de orientação ou erro.
-  const Notice(this.message, {super.key, this.error = false});
+  const Notice(this.message, {super.key, this.error = false, this.success = false});
   @override
   /// Renderiza a caixa de aviso compartilhada entre as telas.
-  Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.symmetric(vertical: 10),
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: error ? const Color(0xFFFFEFF0) : const Color(0xFFEDF3FF),
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          error ? Icons.error_outline : Icons.info_outline,
-          size: 19,
-          color: error ? Colors.red.shade700 : blue,
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            message,
-            style: TextStyle(
-              fontSize: 13,
-              color: error ? Colors.red.shade800 : ink,
+  Widget build(BuildContext context) {
+    final color = error
+        ? Colors.red.shade700
+        : success
+        ? Colors.green.shade700
+        : blue;
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: error
+            ? const Color(0xFFFFEFF0)
+            : success
+            ? const Color(0xFFEAF7EE)
+            : const Color(0xFFEDF3FF),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            error
+                ? Icons.error_outline
+                : success
+                ? Icons.check_circle_outline
+                : Icons.info_outline,
+            size: 19,
+            color: color,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(fontSize: 13, color: error ? Colors.red.shade800 : color),
             ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
 
 /// Campo de endereço com busca remota e retorno do ponto geocodificado escolhido.

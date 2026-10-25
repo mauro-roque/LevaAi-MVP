@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'api.dart';
 import 'ui.dart';
 import 'request_page.dart';
@@ -493,6 +494,7 @@ class _AuthPageState extends State<AuthPage> {
       pendingVerification = false;
   String role = 'cliente';
   String? error;
+  String? success;
   @override
   /// Libera todos os controladores de texto criados pelo formulário.
   void dispose() {
@@ -508,6 +510,7 @@ class _AuthPageState extends State<AuthPage> {
     setState(() {
       loading = true;
       error = null;
+      success = null;
     });
     try {
       final result = await widget.api.call(
@@ -532,7 +535,7 @@ class _AuthPageState extends State<AuthPage> {
         setState(() {
           pendingVerification = false;
           register = false;
-          error = 'E-mail confirmado. Entre com sua conta.';
+          success = 'E-mail confirmado. Entre com sua conta.';
         });
       } else if (mounted) {
         widget.onAuthenticated(result);
@@ -653,16 +656,19 @@ class _AuthPageState extends State<AuthPage> {
                         if (pendingVerification) ...[
                           TextFormField(
                             controller: verificationCode,
-                            keyboardType: TextInputType.text,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(6),
+                            ],
                             decoration: const InputDecoration(
                               labelText: 'Código de confirmação',
                               prefixIcon: Icon(Icons.verified_user_outlined),
                             ),
                             validator:
-                                (v) =>
-                                    (v?.trim().length ?? 0) < 30
-                                        ? 'Cole o código recebido por e-mail.'
-                                        : null,
+                                (v) => RegExp(r'^\d{6}$').hasMatch(v?.trim() ?? '')
+                                    ? null
+                                    : 'Informe os 6 dígitos recebidos por e-mail.',
                           ),
                           const SizedBox(height: 16),
                         ] else if (register) ...[
@@ -756,6 +762,7 @@ class _AuthPageState extends State<AuthPage> {
                           },
                         ),
                         if (error != null) Notice(error!, error: true),
+                        if (success != null) Notice(success!, success: true),
                         if (!register)
                           Align(
                             alignment: Alignment.centerRight,
@@ -792,6 +799,7 @@ class _AuthPageState extends State<AuthPage> {
                                     : () => setState(() {
                                       register = !register;
                                       error = null;
+                                      success = null;
                                     }),
                             child: Text(
                               register
