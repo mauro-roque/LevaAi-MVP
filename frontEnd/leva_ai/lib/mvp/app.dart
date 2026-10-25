@@ -740,22 +740,20 @@ class _AuthPageState extends State<AuthPage> {
                               ),
                             ),
                           ),
-                          validator:
-                              (v) =>
-                                  register && (v?.length ?? 0) < 12
-                                      ? 'Use ao menos 12 caracteres.'
-                                      : register &&
-                                              !RegExp(
-                                                r'[a-z]',
-                                              ).hasMatch(v ?? '') ||
-                                          register &&
-                                              !RegExp(
-                                                r'[A-Z]',
-                                              ).hasMatch(v ?? '') ||
-                                          register &&
-                                              !RegExp(r'\\d').hasMatch(v ?? '')
-                                      ? 'Inclua letra maiúscula, minúscula e número.'
-                                      : null,
+                          validator: (value) {
+                            if (!register) return null;
+                            final candidate = value ?? '';
+                            if (candidate.length < 12) {
+                              return 'Use ao menos 12 caracteres.';
+                            }
+                            final hasRequiredCharacters =
+                                RegExp(r'[a-z]').hasMatch(candidate) &&
+                                RegExp(r'[A-Z]').hasMatch(candidate) &&
+                                RegExp(r'\d').hasMatch(candidate);
+                            return hasRequiredCharacters
+                                ? null
+                                : 'Inclua letra maiúscula, minúscula e número.';
+                          },
                         ),
                         if (error != null) Notice(error!, error: true),
                         if (!register)

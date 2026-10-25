@@ -79,6 +79,49 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('aceita senha forte com número ao criar uma conta', (tester) async {
+    var registrationRequested = false;
+    final api = Api(
+      client: MockClient((request) async {
+        if (request.url.path.endsWith('/auth/register')) {
+          registrationRequested = true;
+          return http.Response(jsonEncode({'pendingVerification': true}), 200);
+        }
+        return http.Response(jsonEncode({'demo': false}), 200);
+      }),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: appTheme(),
+        home: AuthPage(api: api, onAuthenticated: (_) {}),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ainda não tem conta? Cadastre-se'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nome completo'),
+      'Pessoa de Teste',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Telefone com DDD'),
+      '14999999999',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'E-mail'),
+      'teste@example.com',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Senha'),
+      'SenhaForte123',
+    );
+    await tester.tap(find.text('Criar minha conta'));
+    await tester.pumpAndSettle();
+    expect(registrationRequested, isTrue);
+    expect(find.text('Confirme seu e-mail'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('informa quando o serviço está sendo ativado', (tester) async {
     final api = Api(
       client: MockClient(
