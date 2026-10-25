@@ -815,6 +815,14 @@ class _PostalCodeFieldState extends State<PostalCodeField> {
             ],
           ),
         ),
+      if (widget.value?['precision'] == 'city')
+        const Padding(
+          padding: EdgeInsets.only(top: 7),
+          child: Text(
+            'A rua não foi localizada no mapa. O cálculo usa o centro da cidade e pode variar.',
+            style: TextStyle(fontSize: 12, color: Color(0xFF9A5B00)),
+          ),
+        ),
     ],
   );
 }

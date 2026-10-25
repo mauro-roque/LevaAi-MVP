@@ -149,11 +149,14 @@ export function createMaps(config) {
         .filter(Boolean)
         .join(", ");
       let places = await this.search(address);
+      let cityFallback = false;
       // Alguns CEPs válidos não têm a rua indexada no geocodificador. Nesse
       // caso, calcula-se usando o centro do município informado pelo ViaCEP,
       // preservando o endereço real na confirmação exibida à pessoa usuária.
-      if (!places.length)
+      if (!places.length) {
+        cityFallback = true;
         places = await this.search(`${postal.localidade}, ${postal.uf}, Brasil`);
+      }
       ensure(
         places.length,
         "Não foi possível localizar este CEP no mapa.",
@@ -170,6 +173,7 @@ export function createMaps(config) {
           .filter(Boolean)
           .join(", "),
         cep,
+        precision: cityFallback ? "city" : "street",
       };
     },
     /** Calcula uma rota de carro ou devolve a rota controlada do modo demo. */

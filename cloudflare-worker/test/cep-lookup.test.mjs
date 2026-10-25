@@ -54,6 +54,7 @@ test("consulta CEP devolve endereço confirmado e coordenadas", async () => {
       lat: -23.2,
       lon: -49.3,
       cep: "18800000",
+      precision: "city",
     });
     assert.equal(geocodingCalls, 2);
   } finally {

@@ -615,6 +615,16 @@ class _RequestPageState extends State<RequestPage> {
                     ],
                   ),
                 ),
+              if (routePreview != null &&
+                  (origin?['precision'] == 'city' ||
+                      destination?['precision'] == 'city'))
+                const Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Distância aproximada: um dos CEPs foi calculado pelo centro da cidade.',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF9A5B00)),
+                  ),
+                ),
               const SizedBox(height: 18),
               const Divider(),
               const SizedBox(height: 22),
