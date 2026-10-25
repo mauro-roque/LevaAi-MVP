@@ -29,8 +29,8 @@ class _RequestPageState extends State<RequestPage> {
       weight = TextEditingController(text: '100'),
       volume = TextEditingController(text: '2');
   DateTime date = DateTime.now().add(const Duration(days: 1));
-  Json? origin, destination, result;
-  bool loading = false;
+  Json? origin, destination, result, routePreview;
+  bool loading = false, routeLoading = false;
   String type = 'frete';
   String sortBy = 'Menor preço';
   int helpers = 0;
@@ -74,7 +74,49 @@ class _RequestPageState extends State<RequestPage> {
 
   /// Descarta resultados quando um campo que afeta preço ou compatibilidade muda.
   void invalidate() {
-    if (result != null) setState(() => result = null);
+    if (result != null || routePreview != null) {
+      setState(() {
+        result = null;
+        routePreview = null;
+      });
+    }
+  }
+
+  /// Calcula distância e duração reais para os dois endereços selecionados.
+  Future<void> calculateRoute() async {
+    if (origin == null || destination == null || routeLoading) return;
+    setState(() {
+      routeLoading = true;
+      error = null;
+    });
+    try {
+      final route = await widget.api.call(
+        '/maps/route',
+        method: 'POST',
+        body: {'origin': origin, 'destination': destination},
+      );
+      if (mounted) setState(() => routePreview = route);
+    } catch (e) {
+      if (mounted) setState(() => error = '$e');
+    } finally {
+      if (mounted) setState(() => routeLoading = false);
+    }
+  }
+
+  /// Atualiza um endereço e calcula a rota assim que origem e destino existem.
+  void updateAddress(bool isOrigin, Json? value) {
+    setState(() {
+      if (isOrigin) {
+        origin = value;
+      } else {
+        destination = value;
+      }
+      result = null;
+      routePreview = null;
+    });
+    if (value != null && origin != null && destination != null) {
+      calculateRoute();
+    }
   }
 
   /// Valida dados e pesquisa veículos compatíveis sem exigir autenticação.
@@ -106,7 +148,12 @@ class _RequestPageState extends State<RequestPage> {
           'helpers': helpers,
         },
       );
-      if (mounted) setState(() => result = data);
+      if (mounted) {
+        setState(() {
+          result = data;
+          routePreview = data['route'];
+        });
+      }
     } catch (e) {
       if (mounted) setState(() => error = '$e');
     } finally {
@@ -419,23 +466,42 @@ class _RequestPageState extends State<RequestPage> {
                 api: widget.api,
                 label: 'Endereço de origem',
                 value: origin,
-                onChanged:
-                    (v) => setState(() {
-                      origin = v;
-                      result = null;
-                    }),
+                onChanged: (v) => updateAddress(true, v),
               ),
               const SizedBox(height: 16),
               AddressField(
                 api: widget.api,
                 label: 'Endereço de destino',
                 value: destination,
-                onChanged:
-                    (v) => setState(() {
-                      destination = v;
-                      result = null;
-                    }),
+                onChanged: (v) => updateAddress(false, v),
               ),
+              if (routeLoading)
+                const Padding(
+                  padding: EdgeInsets.only(top: 16),
+                  child: LinearProgressIndicator(),
+                ),
+              if (routePreview != null)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(top: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF5FF),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.route_outlined, color: blue),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          '${decimal(routePreview!['distanceKm'])} km • aproximadamente ${routePreview!['durationMinutes']} min',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               const SizedBox(height: 18),
               const Divider(),
               const SizedBox(height: 22),

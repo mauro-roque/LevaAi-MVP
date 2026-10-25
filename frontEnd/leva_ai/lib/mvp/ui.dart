@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'api.dart';
 
@@ -277,6 +278,7 @@ class _AddressFieldState extends State<AddressField> {
   List<dynamic> results = [];
   bool loading = false;
   String? error;
+  Timer? debounce;
   @override
   /// Inicializa o texto exibido a partir do ponto já selecionado.
   void initState() {
@@ -297,6 +299,7 @@ class _AddressFieldState extends State<AddressField> {
   @override
   /// Libera o controlador usado exclusivamente pelo campo de endereço.
   void dispose() {
+    debounce?.cancel();
     controller.dispose();
     super.dispose();
   }
@@ -344,6 +347,10 @@ class _AddressFieldState extends State<AddressField> {
         onChanged: (_) {
           widget.onChanged(null);
           setState(() => results = []);
+          debounce?.cancel();
+          if (controller.text.trim().length >= 4) {
+            debounce = Timer(const Duration(milliseconds: 450), search);
+          }
         },
         onSubmitted: (_) => search(),
         decoration: InputDecoration(

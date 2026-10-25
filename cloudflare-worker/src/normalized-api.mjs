@@ -430,7 +430,11 @@ export function createApi(db, config) {
   return {
     /** Encaminha cada rota do contrato HTTP para a regra de negócio correspondente. */
     async handle({ method, path, url, body = {}, authorization }) {
-      const guestRoutes = ["/api/quotes", "/api/maps/search"];
+      const guestRoutes = [
+        "/api/quotes",
+        "/api/maps/search",
+        "/api/maps/route",
+      ];
       const isPublic =
         (path.startsWith("/api/auth/") && path != "/api/auth/logout") ||
         /^\/api\/providers\/[^/]+$/.test(path);
@@ -644,6 +648,8 @@ export function createApi(db, config) {
       }
       if (method === "GET" && path === "/api/maps/search")
         return maps.search(text(url.searchParams.get("q"), "Endereço", 4, 200));
+      if (method === "POST" && path === "/api/maps/route")
+        return maps.route(point(body.origin), point(body.destination));
       const pm = path.match(/^\/api\/providers\/([^/]+)$/);
       if (method === "GET" && pm) return providerDetails(uuid(pm[1]));
       if (method === "GET" && path === "/api/vehicles") {
