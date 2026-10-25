@@ -565,7 +565,7 @@ class _CitySearchSheetState extends State<_CitySearchSheet> {
       final cityQuery = '${controller.text.trim()}, Brasil';
       final found =
           await widget.api.call(
-                '/maps/search?q=${Uri.encodeQueryComponent(cityQuery)}',
+                '/maps/search?q=${Uri.encodeQueryComponent(cityQuery)}&city=true',
               )
               as List;
       if (mounted) {

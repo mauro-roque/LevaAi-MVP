@@ -20,6 +20,57 @@ export function createMaps(config) {
   const cache = new Map();
   let lastCall = 0,
     queue = Promise.resolve();
+  const states = {
+    acre: "AC",
+    alagoas: "AL",
+    amapá: "AP",
+    amazonas: "AM",
+    bahia: "BA",
+    ceará: "CE",
+    "distrito federal": "DF",
+    "espírito santo": "ES",
+    goiás: "GO",
+    maranhão: "MA",
+    "mato grosso": "MT",
+    "mato grosso do sul": "MS",
+    "minas gerais": "MG",
+    pará: "PA",
+    paraíba: "PB",
+    paraná: "PR",
+    pernambuco: "PE",
+    piauí: "PI",
+    "rio de janeiro": "RJ",
+    "rio grande do norte": "RN",
+    "rio grande do sul": "RS",
+    rondônia: "RO",
+    roraima: "RR",
+    "santa catarina": "SC",
+    "são paulo": "SP",
+    sergipe: "SE",
+    tocantins: "TO",
+  };
+
+  /** Normaliza uma cidade do Nominatim para o formato curto Município - UF. */
+  function cityPlace(place) {
+    const address = place.address ?? {};
+    const city =
+      address.city ??
+      address.town ??
+      address.village ??
+      address.municipality ??
+      place.name ??
+      String(place.display_name ?? "").split(",")[0];
+    const stateCode = Object.entries(address)
+      .find(([key]) => key.toLowerCase().startsWith("iso3166-2"))?.[1]
+      ?.split("-")
+      .at(-1);
+    const uf = stateCode ?? states[String(address.state ?? "").toLowerCase()];
+    return {
+      label: uf ? `${city} - ${uf}` : city,
+      lat: Number(place.lat),
+      lon: Number(place.lon),
+    };
+  }
   /** Faz uma chamada ao provedor de mapas com prazo e mensagem segura. */
   async function get(url) {
     try {
@@ -41,8 +92,8 @@ export function createMaps(config) {
   }
   return {
     /** Pesquisa endereços, respeitando limite do Nominatim e cache local. */
-    async search(query) {
-      const key = query.toLowerCase();
+    async search(query, { citiesOnly = false } = {}) {
+      const key = `${citiesOnly ? "city:" : ""}${query.toLowerCase()}`;
       if (cache.has(key)) return cache.get(key);
       const operation = queue.then(async () => {
         if (cache.has(key)) return cache.get(key);
@@ -56,12 +107,24 @@ export function createMaps(config) {
           format: "jsonv2",
           limit: "5",
           countrycodes: "br",
+          addressdetails: "1",
+          ...(citiesOnly ? { featureType: "city" } : {}),
         });
-        const data = (await get(url)).map((place) => ({
-          label: place.display_name,
-          lat: Number(place.lat),
-          lon: Number(place.lon),
-        }));
+        const source = await get(url);
+        const data = citiesOnly
+          ? [
+              ...new Map(
+                source.map((place) => {
+                  const city = cityPlace(place);
+                  return [city.label.toLowerCase(), city];
+                }),
+              ).values(),
+            ]
+          : source.map((place) => ({
+              label: place.display_name,
+              lat: Number(place.lat),
+              lon: Number(place.lon),
+            }));
         if (cache.size > 500) cache.delete(cache.keys().next().value);
         cache.set(key, data);
         return data;

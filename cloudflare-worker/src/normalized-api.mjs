@@ -647,7 +647,12 @@ export function createApi(db, config) {
         return { id: aid, name, point: p };
       }
       if (method === "GET" && path === "/api/maps/search")
-        return maps.search(text(url.searchParams.get("q"), "Endereço", 4, 200));
+        return maps.search(
+          text(url.searchParams.get("q"), "Endereço", 3, 200),
+          {
+            citiesOnly: url.searchParams.get("city") === "true",
+          },
+        );
       if (method === "POST" && path === "/api/maps/route")
         return maps.route(point(body.origin), point(body.destination));
       const pm = path.match(/^\/api\/providers\/([^/]+)$/);
