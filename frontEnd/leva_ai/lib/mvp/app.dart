@@ -852,16 +852,26 @@ class _AuthPageState extends State<AuthPage> {
                           ),
                           const SizedBox(height: 12),
                         ],
-                        FilledButton(
-                          onPressed: loading ? null : submit,
-                          child: Text(
-                            loading
-                                ? 'Aguarde…'
-                                : pendingVerification
-                                ? 'Confirmar e-mail'
-                                : register
-                                ? 'Criar minha conta'
-                                : 'Entrar na minha conta',
+                        // O botão oficial do Google é limitado a 400 px pela
+                        // própria identidade visual do provedor. Mantemos a
+                        // mesma medida no botão principal para alinhamento.
+                        Align(
+                          alignment: Alignment.center,
+                          child: SizedBox(
+                            width: 400,
+                            height: 44,
+                            child: FilledButton(
+                              onPressed: loading ? null : submit,
+                              child: Text(
+                                loading
+                                    ? 'Aguarde…'
+                                    : pendingVerification
+                                    ? 'Confirmar e-mail'
+                                    : register
+                                    ? 'Criar minha conta'
+                                    : 'Entrar na minha conta',
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 16),
