@@ -38,11 +38,13 @@
   <script src="https://accounts.google.com/gsi/client" async></script>
   <script>
     window.levaAiRenderGoogleButton = function (elementId, clientId) {
-      const render = function () {
+      const render = function (attempt) {
         const host = document.getElementById(elementId);
-        if (!host) return;
-        if (!window.google || !google.accounts || !google.accounts.id) {
-          setTimeout(render, 250);
+        // Na primeira abertura da tela, o Flutter pode criar o host alguns
+        // instantes depois desta chamada. Aguarda host e biblioteca do Google
+        // para que o botão apareça sem precisar voltar à tela anterior.
+        if (!host || !window.google || !google.accounts || !google.accounts.id) {
+          if (attempt < 40) setTimeout(function () { render(attempt + 1); }, 250);
           return;
         }
         google.accounts.id.initialize({
@@ -64,7 +66,7 @@
           text: 'continue_with', shape: 'rectangular', width: buttonWidth
         });
       };
-      render();
+      render(0);
     };
   </script>
   <!--
