@@ -42,29 +42,9 @@ class _GoogleOfficialButtonState extends State<GoogleOfficialButton> {
     }).toJS;
     web.window.addEventListener('levaai-google-credential', _credentialListener);
     ui_web.platformViewRegistry.registerViewFactory(_viewType, (_) {
-      final host = web.HTMLDivElement()
-        ..id = _hostId
-        ..style.width = '100%'
-        ..style.height = '44px'
-        ..style.display = 'flex'
-        ..style.justifyContent = 'center'
-        ..style.alignItems = 'center'
-        ..style.opacity = '1'
-        ..style.transition = 'opacity 120ms ease';
-      // Reserva o mesmo espaço do botão oficial desde o primeiro quadro.
-      // Não há texto provisório: assim não ocorre troca perceptível de fonte
-      // antes de a identidade visual oficial do Google ser exibida.
-      final loading = web.HTMLSpanElement()
-        ..style.width = '100%'
-        ..style.maxWidth = '400px'
-        ..style.height = '42px'
-        ..style.display = 'flex'
-        ..style.alignItems = 'center'
-        ..style.justifyContent = 'center'
-        ..style.border = '1px solid #dadce0'
-        ..style.borderRadius = '4px'
-        ..style.background = '#ffffff';
-      host.append(loading);
+      // O host não possui estilos próprios neste teste. O botão será exibido
+      // somente com os padrões visuais definidos pela biblioteca do Google.
+      final host = web.HTMLDivElement()..id = _hostId;
       Future<void>.delayed(Duration.zero, () {
         _renderGoogleButton(_hostId.toJS, widget.clientId.toJS);
       });
