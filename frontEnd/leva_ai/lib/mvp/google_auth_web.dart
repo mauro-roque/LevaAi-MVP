@@ -66,10 +66,15 @@ class _GoogleOfficialButtonState extends State<GoogleOfficialButton> {
     ignoring: !widget.enabled,
     child: Opacity(
       opacity: widget.enabled ? 1 : .55,
-      child: SizedBox(
-        height: 44,
-        width: double.infinity,
-        child: HtmlElementView(viewType: _viewType),
+      // Mantém somente o espaço físico necessário ao componente oficial.
+      // Não há estilo visual aplicado pelo LevaAí.
+      child: Align(
+        alignment: Alignment.center,
+        child: SizedBox(
+          width: 400,
+          height: 44,
+          child: HtmlElementView(viewType: _viewType),
+        ),
       ),
     ),
   );

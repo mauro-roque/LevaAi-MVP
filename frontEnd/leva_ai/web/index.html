@@ -58,8 +58,8 @@
           cancel_on_tap_outside: true
         });
         host.replaceChildren();
-        // Sem parâmetros: aplica tamanho, fonte e aparência nativos do Google.
-        google.accounts.id.renderButton(host);
+        // Apenas dimensões; fonte, cores e formato permanecem nativos do Google.
+        google.accounts.id.renderButton(host, { size: 'large', width: 400 });
       };
       render(0);
     };
