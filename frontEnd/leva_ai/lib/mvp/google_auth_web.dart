@@ -1,9 +1,79 @@
+import 'dart:async';
 import 'dart:js_interop';
+import 'dart:ui_web' as ui_web;
 
-/// Chama o Google Identity Services carregado no `index.html` e recebe o ID
-/// token assinado. O token é validado novamente no Worker antes do login.
-@JS('levaAiGoogleSignIn')
-external JSPromise<JSString> _requestGoogleCredential(JSString clientId);
+import 'package:flutter/material.dart';
+import 'package:web/web.dart' as web;
 
-Future<String> requestGoogleCredential(String clientId) async =>
-    (await _requestGoogleCredential(clientId.toJS).toDart).toDart;
+/// Registra o botão oficial do Google dentro de um elemento HTML do Flutter.
+@JS('levaAiRenderGoogleButton')
+external void _renderGoogleButton(JSString elementId, JSString clientId);
+
+/// Exibe a interface oficial do Google no lugar do botão visual do aplicativo.
+class GoogleOfficialButton extends StatefulWidget {
+  const GoogleOfficialButton({
+    super.key,
+    required this.clientId,
+    required this.onCredential,
+    required this.enabled,
+  });
+
+  final String clientId;
+  final ValueChanged<String> onCredential;
+  final bool enabled;
+
+  @override
+  State<GoogleOfficialButton> createState() => _GoogleOfficialButtonState();
+}
+
+class _GoogleOfficialButtonState extends State<GoogleOfficialButton> {
+  static var _sequence = 0;
+  late final String _hostId = 'levaai-google-button-${_sequence++}';
+  late final String _viewType = '$_hostId-view';
+  late final JSFunction _credentialListener;
+
+  @override
+  void initState() {
+    super.initState();
+    _credentialListener = ((web.Event event) {
+      if (!mounted || event is! web.CustomEvent) return;
+      final credential = event.detail;
+      if (credential is JSString) widget.onCredential(credential.toDart);
+    }).toJS;
+    web.window.addEventListener('levaai-google-credential', _credentialListener);
+    ui_web.platformViewRegistry.registerViewFactory(_viewType, (_) {
+      final host = web.HTMLDivElement()
+        ..id = _hostId
+        ..style.width = '100%'
+        ..style.height = '44px'
+        ..style.display = 'flex'
+        ..style.justifyContent = 'center';
+      Future<void>.delayed(Duration.zero, () {
+        _renderGoogleButton(_hostId.toJS, widget.clientId.toJS);
+      });
+      return host;
+    });
+  }
+
+  @override
+  void dispose() {
+    web.window.removeEventListener(
+      'levaai-google-credential',
+      _credentialListener,
+    );
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    ignoring: !widget.enabled,
+    child: Opacity(
+      opacity: widget.enabled ? 1 : .55,
+      child: SizedBox(
+        height: 44,
+        width: double.infinity,
+        child: HtmlElementView(viewType: _viewType),
+      ),
+    ),
+  );
+}

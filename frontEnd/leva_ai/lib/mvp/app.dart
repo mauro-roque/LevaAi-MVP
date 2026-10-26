@@ -564,17 +564,15 @@ class _AuthPageState extends State<AuthPage> {
     }
   }
 
-  /// Obtém o token temporário do Google e troca-o por uma sessão do LevaAí.
-  Future<void> signInWithGoogle() async {
-    final clientId = widget.googleClientId;
-    if (loading || clientId == null || clientId.isEmpty) return;
+  /// Troca o token temporário do botão oficial por uma sessão do LevaAí.
+  Future<void> signInWithGoogle(String credential) async {
+    if (loading) return;
     setState(() {
       loading = true;
       error = null;
       success = null;
     });
     try {
-      final credential = await requestGoogleCredential(clientId);
       final result = await widget.api.call(
         '/auth/google',
         method: 'POST',
@@ -836,10 +834,10 @@ class _AuthPageState extends State<AuthPage> {
                         const SizedBox(height: 24),
                         if (!pendingVerification &&
                             widget.googleClientId != null) ...[
-                          OutlinedButton.icon(
-                            onPressed: loading ? null : signInWithGoogle,
-                            icon: const Icon(Icons.g_mobiledata_rounded, size: 28),
-                            label: const Text('Continuar com Google'),
+                          GoogleOfficialButton(
+                            clientId: widget.googleClientId!,
+                            onCredential: signInWithGoogle,
+                            enabled: !loading,
                           ),
                           const SizedBox(height: 12),
                           const Row(
