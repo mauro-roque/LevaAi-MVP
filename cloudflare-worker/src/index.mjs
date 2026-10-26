@@ -124,6 +124,7 @@ export function createWorker(databaseFactory = openDatabase) {
             {
               demo: config.demo,
               demoVerificationCode: config.demoVerificationCode,
+              googleClientId: config.googleClientId,
               demoPlaces: config.demo ? demoPlaces : [],
               paymentMode: config.demo ? "demo" : "mercado_pago",
             },

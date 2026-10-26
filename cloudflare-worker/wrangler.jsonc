@@ -8,6 +8,7 @@
     "DEMO_MODE": "false",
     "DEMO_VERIFICATION_CODE": "abc",
     "EMAIL_VERIFICATION_REQUIRED": "true",
+    "GOOGLE_CLIENT_ID": "797443734570-clr40j3are8aidg8mtuc1d3563sug5m6.apps.googleusercontent.com",
     "MAIL_FROM": "onboarding@resend.dev",
     "ALLOWED_ORIGINS": "https://leva-ai-platform.mauroroqueestudos.workers.dev",
     "MAPS_USER_AGENT": "LevaAi/1.0"

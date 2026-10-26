@@ -33,6 +33,34 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <!-- Google Identity Services entrega apenas um token temporário ao Flutter.
+       A validação e a criação da sessão acontecem no Cloudflare Worker. -->
+  <script src="https://accounts.google.com/gsi/client" async></script>
+  <script>
+    window.levaAiGoogleSignIn = function (clientId) {
+      return new Promise(function (resolve, reject) {
+        const start = function () {
+          if (!window.google || !google.accounts || !google.accounts.id) {
+            reject(new Error('O login Google ainda está carregando.'));
+            return;
+          }
+          google.accounts.id.initialize({
+            client_id: clientId,
+            callback: function (response) { resolve(response.credential); },
+            auto_select: false,
+            cancel_on_tap_outside: true
+          });
+          google.accounts.id.prompt(function (notification) {
+            if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+              reject(new Error('Não foi possível abrir o seletor de conta Google.'));
+            }
+          });
+        };
+        if (window.google && google.accounts && google.accounts.id) start();
+        else setTimeout(start, 500);
+      });
+    };
+  </script>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader

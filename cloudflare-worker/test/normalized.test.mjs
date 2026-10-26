@@ -27,13 +27,22 @@ test("modelo original: busca visitante, autorização, reserva, Pix, estados e a
     ),
     "utf8",
   );
+  const googleAuth = await readFile(
+    new URL(
+      "../../supabase/migrations/202610250004_google_auth.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
   await pg.exec(base);
   await pg.exec(migration);
   await pg.exec(emailVerification);
+  await pg.exec(googleAuth);
   // Reaplicação deve preservar o banco.
   await pg.exec(base);
   await pg.exec(migration);
   await pg.exec(emailVerification);
+  await pg.exec(googleAuth);
   const db = { query: async (s, p = []) => (await pg.query(s, p)).rows };
   await pg.exec("BEGIN");
   await seed(db);
@@ -352,6 +361,45 @@ test("modelo original: busca visitante, autorização, reserva, Pix, estados e a
     );
     assert.equal(notifiedBooking.status, "aguardando_prestador");
     assert.match(emailBody, /nova solicita..o/i);
+    globalThis.fetch = originalFetch;
+    globalThis.fetch = async (url) => {
+      assert.match(String(url), /oauth2\.googleapis\.com\/tokeninfo/);
+      return new Response(
+        JSON.stringify({
+          aud: "google-client-id",
+          iss: "https://accounts.google.com",
+          sub: "google-subject-12345",
+          email: "google.user@example.com",
+          email_verified: "true",
+          name: "Usuário Google",
+        }),
+        { status: 200 },
+      );
+    };
+    const googleApi = createApi(db, {
+      ...cfg,
+      googleClientId: "google-client-id",
+    });
+    const googleCall = async () => {
+      await pg.exec("BEGIN");
+      try {
+        const result = await googleApi.handle({
+          method: "POST",
+          path: "/api/auth/google",
+          url: new URL("https://test/api/auth/google"),
+          body: { credential: "valid-google-id-token" },
+        });
+        await pg.exec("COMMIT");
+        return result;
+      } catch (error) {
+        await pg.exec("ROLLBACK");
+        throw error;
+      }
+    };
+    const googleAccount = await googleCall();
+    assert.equal(googleAccount.user.email, "google.user@example.com");
+    assert.equal(googleAccount.user.role, "cliente");
+    assert.equal((await googleCall()).user.id, googleAccount.user.id);
     globalThis.fetch = originalFetch;
     await assert.rejects(
       () =>

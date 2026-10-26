@@ -39,7 +39,7 @@ const uuid = (value) => {
   );
   return value;
 };
-const userSql = `SELECT u.id,u.nome AS name,u.email,u.senha_hash AS password_hash,u.tipo AS role,u.telefone AS phone,u.ativo,u.email_verificado,
+const userSql = `SELECT u.id,u.nome AS name,u.email,u.senha_hash AS password_hash,u.tipo AS role,u.telefone AS phone,u.ativo,u.email_verificado,u.google_sub,
  coalesce(p.status_disponibilidade='disponivel',true) AS available FROM public.usuarios u LEFT JOIN public.prestadores p ON p.usuario_id=u.id`;
 const vehicleSql = `SELECT v.*,a.quantidade_disponivel,a.valor_por_ajudante,a.disponivel AS equipe_disponivel
  FROM public.veiculos v LEFT JOIN public.ajudantes a ON a.id=v.ajudantes_id`;
@@ -566,6 +566,58 @@ export function createApi(db, config) {
           "Confirme seu e-mail antes de entrar.",
           403,
         );
+        return session(found);
+      }
+      if (method === "POST" && path === "/api/auth/google") {
+        ensure(
+          config.googleClientId,
+          "O login com Google ainda não foi configurado.",
+          503,
+        );
+        const credential = text(body.credential, "Credencial do Google", 20, 4096);
+        // A validação é feita diretamente nos servidores do Google. Além da
+        // assinatura, conferimos emissor, público e e-mail verificado.
+        const response = await fetch(
+          `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`,
+        );
+        ensure(response.ok, "Não foi possível validar sua conta Google.", 401);
+        const claims = await response.json();
+        ensure(
+          claims.aud === config.googleClientId &&
+            ["accounts.google.com", "https://accounts.google.com"].includes(
+              claims.iss,
+            ) &&
+            (claims.email_verified === true || claims.email_verified === "true"),
+          "A conta Google não pôde ser validada.",
+          401,
+        );
+        const email = text(claims.email, "E-mail", 5, 150).toLowerCase();
+        const googleSub = text(claims.sub, "Conta Google", 5, 255);
+        let found = await one(
+          userSql + " WHERE u.google_sub=$1 OR lower(u.email)=$2",
+          [googleSub, email],
+        );
+        if (found) {
+          ensure(
+            !found.google_sub || found.google_sub === googleSub,
+            "Este e-mail já está associado a outra conta Google.",
+            409,
+          );
+          await db.query(
+            "UPDATE public.usuarios SET google_sub=$1,email_verificado=true,atualizado_em=now() WHERE id=$2",
+            [googleSub, found.id],
+          );
+          found = await one(userSql + " WHERE u.id=$1", [found.id]);
+        } else {
+          const uid = id();
+          const name = text(claims.name || email.split("@")[0], "Nome", 2, 150);
+          await db.query(
+            "INSERT INTO public.usuarios(id,nome,email,senha_hash,tipo,telefone,email_verificado,google_sub) VALUES($1,$2,$3,$4,'cliente',NULL,true,$5)",
+            [uid, name, email, await hashPassword(id()), googleSub],
+          );
+          await db.query("INSERT INTO public.clientes(usuario_id) VALUES($1)", [uid]);
+          found = await one(userSql + " WHERE u.id=$1", [uid]);
+        }
         return session(found);
       }
       if (method === "POST" && path === "/api/auth/forgot") {

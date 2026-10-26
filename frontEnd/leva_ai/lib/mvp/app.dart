@@ -9,6 +9,7 @@ import 'storage.dart';
 import 'onboarding.dart';
 import 'profile_page.dart';
 import 'recovery_page.dart';
+import 'google_auth.dart';
 
 /// Raiz do fluxo principal do MVP: sessão, navegação e carregamento inicial.
 class LevaAiMvp extends StatefulWidget {
@@ -146,6 +147,7 @@ class _LevaAiMvpState extends State<LevaAiMvp> {
                 AuthPage(
                   api: api,
                   demoVerificationCode: config?['demoVerificationCode'],
+                  googleClientId: config?['googleClientId'],
                   onAuthenticated: (d) => Navigator.pop(c, d),
                 ),
       ),
@@ -478,6 +480,7 @@ class AuthPage extends StatefulWidget {
   final Api api;
   final ValueChanged<Json> onAuthenticated;
   final String? demoVerificationCode;
+  final String? googleClientId;
 
   /// Recebe as dependências e a ação chamada após o login ou cadastro.
   const AuthPage({
@@ -485,6 +488,7 @@ class AuthPage extends StatefulWidget {
     required this.api,
     required this.onAuthenticated,
     this.demoVerificationCode,
+    this.googleClientId,
   });
   @override
   State<AuthPage> createState() => _AuthPageState();
@@ -555,6 +559,32 @@ class _AuthPageState extends State<AuthPage> {
       }
     } catch (e) {
       if (mounted) setState(() => error = e.toString());
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  /// Obtém o token temporário do Google e troca-o por uma sessão do LevaAí.
+  Future<void> signInWithGoogle() async {
+    final clientId = widget.googleClientId;
+    if (loading || clientId == null || clientId.isEmpty) return;
+    setState(() {
+      loading = true;
+      error = null;
+      success = null;
+    });
+    try {
+      final credential = await requestGoogleCredential(clientId);
+      final result = await widget.api.call(
+        '/auth/google',
+        method: 'POST',
+        body: {'credential': credential},
+      );
+      if (mounted) widget.onAuthenticated(result);
+    } catch (e) {
+      if (mounted) {
+        setState(() => error = 'Não foi possível entrar com Google. Tente novamente.');
+      }
     } finally {
       if (mounted) setState(() => loading = false);
     }
@@ -801,6 +831,26 @@ class _AuthPageState extends State<AuthPage> {
                             ),
                           ),
                         const SizedBox(height: 24),
+                        if (!pendingVerification &&
+                            widget.googleClientId != null) ...[
+                          OutlinedButton.icon(
+                            onPressed: loading ? null : signInWithGoogle,
+                            icon: const Icon(Icons.g_mobiledata_rounded, size: 28),
+                            label: const Text('Continuar com Google'),
+                          ),
+                          const SizedBox(height: 12),
+                          const Row(
+                            children: [
+                              Expanded(child: Divider()),
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 12),
+                                child: Text('ou'),
+                              ),
+                              Expanded(child: Divider()),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                        ],
                         FilledButton(
                           onPressed: loading ? null : submit,
                           child: Text(

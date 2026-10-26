@@ -66,6 +66,9 @@ export function configuration(env) {
     appOrigin: env.APP_ORIGIN,
     emailVerificationRequired,
     demoVerificationCode,
+    // O identificador OAuth é público e precisa chegar ao navegador para
+    // iniciar o seletor de conta do Google. A chave secreta nunca é usada.
+    googleClientId: env.GOOGLE_CLIENT_ID || null,
     allowedOrigins: String(env.ALLOWED_ORIGINS || "")
       .split(",")
       .map((origin) => origin.trim())
