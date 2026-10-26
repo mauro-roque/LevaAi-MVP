@@ -583,7 +583,10 @@ class _AuthPageState extends State<AuthPage> {
       if (mounted) widget.onAuthenticated(result);
     } catch (e) {
       if (mounted) {
-        setState(() => error = 'Não foi possível entrar com Google. Tente novamente.');
+        setState(
+          () => error =
+              'Não foi possível concluir o login Google. Feche bloqueadores de pop-up e tente novamente.',
+        );
       }
     } finally {
       if (mounted) setState(() => loading = false);

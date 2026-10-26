@@ -44,16 +44,52 @@
             reject(new Error('O login Google ainda está carregando.'));
             return;
           }
+
+          // O One Tap automático pode ser bloqueado por navegadores com
+          // proteção contra rastreamento. Exibimos o botão oficial do Google
+          // em uma janela própria para o usuário sempre ter uma ação visível.
+          const backdrop = document.createElement('div');
+          backdrop.style.cssText = [
+            'position:fixed', 'inset:0', 'z-index:2147483647',
+            'display:flex', 'align-items:center', 'justify-content:center',
+            'background:rgba(15,23,42,.52)', 'padding:24px'
+          ].join(';');
+          const dialog = document.createElement('div');
+          dialog.style.cssText = [
+            'width:min(360px,100%)', 'box-sizing:border-box',
+            'border-radius:18px', 'background:#fff', 'padding:28px',
+            'box-shadow:0 24px 64px rgba(15,23,42,.28)',
+            'font-family:Arial,sans-serif', 'text-align:center', 'color:#1f2937'
+          ].join(';');
+          dialog.innerHTML = '<button aria-label="Fechar" style="float:right;border:0;background:transparent;font-size:24px;line-height:20px;cursor:pointer;color:#64748b">×</button><h2 style="margin:8px 0 10px;font-size:21px">Entrar no LevaAí</h2><p style="margin:0 0 22px;color:#64748b;font-size:14px;line-height:20px">Escolha sua conta Google para continuar.</p>';
+          const buttonHost = document.createElement('div');
+          buttonHost.style.cssText = 'display:flex;justify-content:center;min-height:44px';
+          dialog.appendChild(buttonHost);
+          backdrop.appendChild(dialog);
+          document.body.appendChild(backdrop);
+
+          const close = function (message) {
+            backdrop.remove();
+            reject(new Error(message));
+          };
+          dialog.querySelector('button').onclick = function () {
+            close('Login Google cancelado.');
+          };
+          backdrop.onclick = function (event) {
+            if (event.target === backdrop) close('Login Google cancelado.');
+          };
           google.accounts.id.initialize({
             client_id: clientId,
-            callback: function (response) { resolve(response.credential); },
+            callback: function (response) {
+              backdrop.remove();
+              resolve(response.credential);
+            },
             auto_select: false,
-            cancel_on_tap_outside: true
+            cancel_on_tap_outside: false
           });
-          google.accounts.id.prompt(function (notification) {
-            if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-              reject(new Error('Não foi possível abrir o seletor de conta Google.'));
-            }
+          google.accounts.id.renderButton(buttonHost, {
+            theme: 'outline', size: 'large', type: 'standard',
+            text: 'continue_with', shape: 'rectangular', width: 304
           });
         };
         if (window.google && google.accounts && google.accounts.id) start();
