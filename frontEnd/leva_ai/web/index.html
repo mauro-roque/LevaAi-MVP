@@ -57,6 +57,9 @@
           auto_select: false,
           cancel_on_tap_outside: true
         });
+        // Mantém uma transição suave entre o indicador discreto e o botão
+        // oficial, evitando a "piscada" percebida durante o carregamento.
+        host.style.opacity = '0';
         host.replaceChildren();
         // O Google permite até 400 px. Em telas menores, acompanha a largura
         // disponível para manter o botão alinhado aos campos do formulário.
@@ -65,6 +68,7 @@
           theme: 'outline', size: 'large', type: 'standard',
           text: 'continue_with', shape: 'rectangular', width: buttonWidth
         });
+        requestAnimationFrame(function () { host.style.opacity = '1'; });
       };
       render(0);
     };
