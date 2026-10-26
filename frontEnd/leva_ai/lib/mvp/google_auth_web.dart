@@ -52,9 +52,9 @@ class _GoogleOfficialButtonState extends State<GoogleOfficialButton> {
         ..style.opacity = '1'
         ..style.transition = 'opacity 120ms ease';
       // Reserva o mesmo espaço do botão oficial desde o primeiro quadro.
-      // Assim, a chegada da biblioteca do Google não desloca nem pisca a tela.
+      // Não há texto provisório: assim não ocorre troca perceptível de fonte
+      // antes de a identidade visual oficial do Google ser exibida.
       final loading = web.HTMLSpanElement()
-        ..textContent = 'Carregando acesso Google...'
         ..style.width = '100%'
         ..style.maxWidth = '400px'
         ..style.height = '42px'
@@ -63,10 +63,7 @@ class _GoogleOfficialButtonState extends State<GoogleOfficialButton> {
         ..style.justifyContent = 'center'
         ..style.border = '1px solid #dadce0'
         ..style.borderRadius = '4px'
-        ..style.background = '#ffffff'
-        ..style.color = '#5f6368'
-        ..style.fontFamily = 'Roboto, Arial, sans-serif'
-        ..style.fontSize = '14px';
+        ..style.background = '#ffffff';
       host.append(loading);
       Future<void>.delayed(Duration.zero, () {
         _renderGoogleButton(_hostId.toJS, widget.clientId.toJS);
