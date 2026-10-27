@@ -50,6 +50,8 @@
         // Mantém a área reservada invisível enquanto o iframe oficial é criado.
         // Isso evita o efeito de piscada tanto no celular quanto no desktop.
         host.style.visibility = 'hidden';
+        host.style.opacity = '0';
+        host.style.transition = 'opacity 180ms ease-out';
         google.accounts.id.initialize({
           client_id: clientId,
           callback: function (response) {
@@ -82,7 +84,8 @@
             // Aguarda o conteúdo interno do Google, incluindo a fonte oficial,
             // antes de tornar o botão visível. Assim não há troca de peso/fonte.
             setTimeout(function () {
-              requestAnimationFrame(function () { host.style.visibility = 'visible'; });
+              host.style.visibility = 'visible';
+              requestAnimationFrame(function () { host.style.opacity = '1'; });
             }, 120);
           };
           if (frame) frame.addEventListener('load', reveal, { once: true });
