@@ -72,7 +72,9 @@ class _GoogleOfficialButtonState extends State<GoogleOfficialButton> {
         alignment: Alignment.center,
         child: SizedBox(
           width: 400,
-          height: 44,
+          // O botão oficial no tamanho grande possui 40 px de altura. A tela
+          // de login usa a mesma medida no botão azul para os dois alinharem.
+          height: 40,
           child: HtmlElementView(viewType: _viewType),
         ),
       ),

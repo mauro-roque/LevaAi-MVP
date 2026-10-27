@@ -859,7 +859,8 @@ class _AuthPageState extends State<AuthPage> {
                           alignment: Alignment.center,
                           child: SizedBox(
                             width: 400,
-                            height: 44,
+                            // Igual ao botão oficial do Google (tamanho large).
+                            height: 40,
                             child: FilledButton(
                               onPressed: loading ? null : submit,
                               child: Text(

@@ -47,6 +47,9 @@
           if (attempt < 40) setTimeout(function () { render(attempt + 1); }, 250);
           return;
         }
+        // Mantém a área reservada invisível enquanto o iframe oficial é criado.
+        // Isso evita o efeito de piscada tanto no celular quanto no desktop.
+        host.style.visibility = 'hidden';
         google.accounts.id.initialize({
           client_id: clientId,
           callback: function (response) {
@@ -58,8 +61,24 @@
           cancel_on_tap_outside: true
         });
         host.replaceChildren();
-        // Apenas dimensões; fonte, cores e formato permanecem nativos do Google.
-        google.accounts.id.renderButton(host, { size: 'large', width: 400 });
+        // A largura vem do contêiner do Flutter: no desktop chega a 400 px e,
+        // no celular, acompanha exatamente o espaço disponível na tela.
+        const width = Math.min(400, Math.floor(host.getBoundingClientRect().width));
+        if (width < 1) {
+          if (attempt < 40) setTimeout(function () { render(attempt + 1); }, 50);
+          return;
+        }
+        google.accounts.id.renderButton(host, { size: 'large', width: width });
+        const revealWhenReady = function (remaining) {
+          if (!host.querySelector('iframe') && remaining > 0) {
+            requestAnimationFrame(function () { revealWhenReady(remaining - 1); });
+            return;
+          }
+          // Um quadro adicional garante que o botão já esteja desenhado antes
+          // de ele se tornar visível.
+          requestAnimationFrame(function () { host.style.visibility = 'visible'; });
+        };
+        revealWhenReady(20);
       };
       render(0);
     };
