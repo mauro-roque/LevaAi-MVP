@@ -70,13 +70,24 @@
         }
         google.accounts.id.renderButton(host, { size: 'large', width: width });
         const revealWhenReady = function (remaining) {
-          if (!host.querySelector('iframe') && remaining > 0) {
+          const frame = host.querySelector('iframe');
+          if (!frame && remaining > 0) {
             requestAnimationFrame(function () { revealWhenReady(remaining - 1); });
             return;
           }
-          // Um quadro adicional garante que o botão já esteja desenhado antes
-          // de ele se tornar visível.
-          requestAnimationFrame(function () { host.style.visibility = 'visible'; });
+          let revealed = false;
+          const reveal = function () {
+            if (revealed) return;
+            revealed = true;
+            // Aguarda o conteúdo interno do Google, incluindo a fonte oficial,
+            // antes de tornar o botão visível. Assim não há troca de peso/fonte.
+            setTimeout(function () {
+              requestAnimationFrame(function () { host.style.visibility = 'visible'; });
+            }, 120);
+          };
+          if (frame) frame.addEventListener('load', reveal, { once: true });
+          // Fallback se o navegador informar o carregamento antes do listener.
+          setTimeout(reveal, 650);
         };
         revealWhenReady(20);
       };
