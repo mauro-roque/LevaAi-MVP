@@ -950,9 +950,14 @@ class _GoogleRoleSelection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
-            'Como você deseja usar o LevaAí?',
+            'Entre com Google como:',
             textAlign: TextAlign.center,
             style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Escolha seu perfil para continuar com sua conta Google.',
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
