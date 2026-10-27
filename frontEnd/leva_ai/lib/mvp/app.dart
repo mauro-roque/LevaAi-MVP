@@ -507,6 +507,7 @@ class _AuthPageState extends State<AuthPage> {
       hidden = true,
       pendingVerification = false;
   String role = 'cliente';
+  String? googleRole;
   String? error;
   String? success;
   @override
@@ -565,7 +566,7 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   /// Troca o token temporário do botão oficial por uma sessão do LevaAí.
-  Future<void> signInWithGoogle(String credential) async {
+  Future<void> signInWithGoogle(String credential, String selectedRole) async {
     if (loading) return;
     setState(() {
       loading = true;
@@ -576,7 +577,9 @@ class _AuthPageState extends State<AuthPage> {
       final result = await widget.api.call(
         '/auth/google',
         method: 'POST',
-        body: {'credential': credential},
+        // O papel só é usado no primeiro acesso Google. Para uma conta já
+        // existente, o servidor preserva o perfil cadastrado originalmente.
+        body: {'credential': credential, 'role': selectedRole},
       );
       if (mounted) widget.onAuthenticated(result);
     } catch (e) {
@@ -834,11 +837,32 @@ class _AuthPageState extends State<AuthPage> {
                         const SizedBox(height: 24),
                         if (!pendingVerification &&
                             widget.googleClientId != null) ...[
-                          GoogleOfficialButton(
-                            clientId: widget.googleClientId!,
-                            onCredential: signInWithGoogle,
-                            enabled: !loading,
-                          ),
+                          if (googleRole == null)
+                            _GoogleRoleSelection(
+                              enabled: !loading,
+                              onSelected:
+                                  (selectedRole) => setState(
+                                    () => googleRole = selectedRole,
+                                  ),
+                            )
+                          else ...[
+                            GoogleOfficialButton(
+                              clientId: widget.googleClientId!,
+                              onCredential:
+                                  (credential) => signInWithGoogle(
+                                    credential,
+                                    googleRole!,
+                                  ),
+                              enabled: !loading,
+                            ),
+                            TextButton(
+                              onPressed:
+                                  loading
+                                      ? null
+                                      : () => setState(() => googleRole = null),
+                              child: const Text('Alterar tipo de conta'),
+                            ),
+                          ],
                           const SizedBox(height: 12),
                           const Row(
                             children: [
@@ -903,6 +927,49 @@ class _AuthPageState extends State<AuthPage> {
       ),
     );
   }
+}
+
+/// Escolhe o perfil antes do primeiro login pelo Google.
+/// O papel escolhido é enviado apenas na criação da conta; contas existentes
+/// conservam o seu papel original para evitar alterações acidentais.
+class _GoogleRoleSelection extends StatelessWidget {
+  const _GoogleRoleSelection({
+    required this.enabled,
+    required this.onSelected,
+  });
+
+  final bool enabled;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: Alignment.center,
+    child: SizedBox(
+      width: 400,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Como você deseja usar o LevaAí?',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: enabled ? () => onSelected('cliente') : null,
+            icon: const Icon(Icons.local_shipping_outlined),
+            label: const Text('Quero contratar um frete'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: enabled ? () => onSelected('prestador') : null,
+            icon: const Icon(Icons.handyman_outlined),
+            label: const Text('Quero oferecer fretes'),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 /// Desenha a ilustração estática de caminhão do painel de autenticação.

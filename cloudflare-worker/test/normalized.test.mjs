@@ -380,14 +380,14 @@ test("modelo original: busca visitante, autorização, reserva, Pix, estados e a
       ...cfg,
       googleClientId: "google-client-id",
     });
-    const googleCall = async () => {
+    const googleCall = async (role) => {
       await pg.exec("BEGIN");
       try {
         const result = await googleApi.handle({
           method: "POST",
           path: "/api/auth/google",
           url: new URL("https://test/api/auth/google"),
-          body: { credential: "valid-google-id-token" },
+          body: { credential: "valid-google-id-token", role },
         });
         await pg.exec("COMMIT");
         return result;
@@ -396,10 +396,16 @@ test("modelo original: busca visitante, autorização, reserva, Pix, estados e a
         throw error;
       }
     };
-    const googleAccount = await googleCall();
+    const googleAccount = await googleCall("prestador");
     assert.equal(googleAccount.user.email, "google.user@example.com");
-    assert.equal(googleAccount.user.role, "cliente");
-    assert.equal((await googleCall()).user.id, googleAccount.user.id);
+    assert.equal(googleAccount.user.role, "prestador");
+    assert.equal(
+      (await pg.query("SELECT count(*)::int AS total FROM public.prestadores WHERE usuario_id=$1", [googleAccount.user.id])).rows[0].total,
+      1,
+    );
+    // O papel original é preservado quando a mesma conta Google volta a entrar.
+    assert.equal((await googleCall("cliente")).user.id, googleAccount.user.id);
+    assert.equal((await googleCall("cliente")).user.role, "prestador");
     globalThis.fetch = originalFetch;
     await assert.rejects(
       () =>

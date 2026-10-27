@@ -593,6 +593,11 @@ export function createApi(db, config) {
         );
         const email = text(claims.email, "E-mail", 5, 150).toLowerCase();
         const googleSub = text(claims.sub, "Conta Google", 5, 255);
+        const selectedRole = text(body.role || "cliente", "Perfil", 1, 20);
+        ensure(
+          ["cliente", "prestador"].includes(selectedRole),
+          "Escolha um perfil válido para criar sua conta.",
+        );
         let found = await one(
           userSql + " WHERE u.google_sub=$1 OR lower(u.email)=$2",
           [googleSub, email],
@@ -612,10 +617,22 @@ export function createApi(db, config) {
           const uid = id();
           const name = text(claims.name || email.split("@")[0], "Nome", 2, 150);
           await db.query(
-            "INSERT INTO public.usuarios(id,nome,email,senha_hash,tipo,telefone,email_verificado,google_sub) VALUES($1,$2,$3,$4,'cliente',NULL,true,$5)",
-            [uid, name, email, await hashPassword(id()), googleSub],
+            "INSERT INTO public.usuarios(id,nome,email,senha_hash,tipo,telefone,email_verificado,google_sub) VALUES($1,$2,$3,$4,$5,NULL,true,$6)",
+            [
+              uid,
+              name,
+              email,
+              await hashPassword(id()),
+              selectedRole,
+              googleSub,
+            ],
           );
-          await db.query("INSERT INTO public.clientes(usuario_id) VALUES($1)", [uid]);
+          if (selectedRole === "cliente")
+            await db.query("INSERT INTO public.clientes(usuario_id) VALUES($1)", [uid]);
+          else
+            await db.query("INSERT INTO public.prestadores(usuario_id) VALUES($1)", [
+              uid,
+            ]);
           found = await one(userSql + " WHERE u.id=$1", [uid]);
         }
         return session(found);
